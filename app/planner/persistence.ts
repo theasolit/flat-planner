@@ -1,0 +1,156 @@
+import type {
+  Flat,
+  FurniturePlacement,
+  FurnitureTemplate,
+  Room,
+  RoomComponent,
+  WallOpening,
+} from "./types";
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isFiniteNumber(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value);
+}
+
+function isRoomComponent(value: unknown): value is RoomComponent {
+  return (
+    isRecord(value) &&
+    typeof value.id === "string" &&
+    (value.shape === "rectangle" ||
+      value.shape === "right-triangle" ||
+      value.shape === "circle") &&
+    isFiniteNumber(value.x) &&
+    isFiniteNumber(value.y) &&
+    isFiniteNumber(value.width) &&
+    value.width > 0 &&
+    isFiniteNumber(value.length) &&
+    value.length > 0 &&
+    isFiniteNumber(value.rotation)
+  );
+}
+
+function isRoom(value: unknown): value is Room {
+  return (
+    isRecord(value) &&
+    Number.isInteger(value.id) &&
+    typeof value.name === "string" &&
+    isFiniteNumber(value.width) &&
+    value.width > 0 &&
+    isFiniteNumber(value.length) &&
+    value.length > 0 &&
+    isFiniteNumber(value.x) &&
+    isFiniteNumber(value.y) &&
+    Array.isArray(value.components) &&
+    value.components.length > 0 &&
+    value.components.every(isRoomComponent)
+  );
+}
+
+function isFurnitureTemplate(value: unknown): value is FurnitureTemplate {
+  return (
+    isRecord(value) &&
+    typeof value.id === "string" &&
+    typeof value.name === "string" &&
+    (value.shape === "rectangle" ||
+      value.shape === "right-triangle" ||
+      value.shape === "circle") &&
+    isFiniteNumber(value.width) &&
+    value.width > 0 &&
+    isFiniteNumber(value.length) &&
+    value.length > 0 &&
+    (value.components === undefined ||
+      (Array.isArray(value.components) &&
+        value.components.length > 0 &&
+        value.components.every(isRoomComponent)))
+  );
+}
+
+function isFurniturePlacement(value: unknown): value is FurniturePlacement {
+  return (
+    isRecord(value) &&
+    typeof value.id === "string" &&
+    typeof value.templateId === "string" &&
+    Number.isInteger(value.roomId) &&
+    isFiniteNumber(value.x) &&
+    isFiniteNumber(value.y) &&
+    isFiniteNumber(value.rotation) &&
+    (value.width === undefined ||
+      (isFiniteNumber(value.width) && value.width > 0)) &&
+    (value.length === undefined ||
+      (isFiniteNumber(value.length) && value.length > 0))
+  );
+}
+
+function isWallOpening(value: unknown): value is WallOpening {
+  return (
+    isRecord(value) &&
+    typeof value.id === "string" &&
+    typeof value.sourceId === "string" &&
+    isFiniteNumber(value.offset) &&
+    value.offset >= 0 &&
+    isFiniteNumber(value.width) &&
+    value.width > 0 &&
+    (value.kind === undefined ||
+      value.kind === "door" ||
+      value.kind === "window") &&
+    (value.swingSide === undefined ||
+      value.swingSide === "left" ||
+      value.swingSide === "right")
+  );
+}
+
+function isNumericRecord(value: unknown): value is Record<string, number> {
+  return (
+    isRecord(value) &&
+    Object.values(value).every(
+      (entry) => isFiniteNumber(entry) && entry > 0,
+    )
+  );
+}
+
+function isFlat(value: unknown): value is Flat {
+  return (
+    isRecord(value) &&
+    Array.isArray(value.rooms) &&
+    value.rooms.every(isRoom) &&
+    (value.selectedRoomId === null ||
+      (Number.isInteger(value.selectedRoomId) &&
+        value.rooms.some((room) => room.id === value.selectedRoomId))) &&
+    (value.wallThickness === undefined ||
+      (isFiniteNumber(value.wallThickness) && value.wallThickness > 0)) &&
+    (value.wallThicknesses === undefined ||
+      isNumericRecord(value.wallThicknesses)) &&
+    (value.wallOpenings === undefined ||
+      (Array.isArray(value.wallOpenings) &&
+        value.wallOpenings.every(isWallOpening))) &&
+    (value.furnitureTemplates === undefined ||
+      (Array.isArray(value.furnitureTemplates) &&
+        value.furnitureTemplates.every(isFurnitureTemplate))) &&
+    (value.furniturePlacements === undefined ||
+      (Array.isArray(value.furniturePlacements) &&
+        value.furniturePlacements.every(isFurniturePlacement)))
+  );
+}
+
+export function parseFlatData(serialized: string): Flat {
+  let value: unknown;
+
+  try {
+    value = JSON.parse(serialized);
+  } catch (error) {
+    if (error instanceof SyntaxError) {
+      throw new Error("The file is not valid JSON.");
+    }
+
+    throw error;
+  }
+
+  if (!isFlat(value)) {
+    throw new Error("The file does not contain a valid flat planner layout.");
+  }
+
+  return value;
+}

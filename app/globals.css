@@ -1,8 +1,31 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --palette-teal-very-light: #9EDAE3;
+  --palette-teal-light: #84A8AD;
+  --palette-teal-medium: #4D6E73;
+  --palette-teal-dark: #34484A;
+  --palette-teal-very-dark: #111718;
+
+  --palette-blue-very-light: #A7BAE7;
+  --palette-blue-light: #929DB9;
+  --palette-blue-medium: #58637D;
+  --palette-blue-dark: #3B4251;
+  --palette-blue-very-dark: #13151A;
+
+  --palette-green-very-light: #A3ECB9;
+  --palette-green-light: #98C8A7;
+  --palette-green-medium: #5C8B6A;
+  --palette-green-dark: #3F5A47;
+  --palette-green-very-dark: #141D17;
+
+  --app-background: var(--palette-teal-very-dark);
+  --app-surface: var(--palette-teal-dark);
+  --app-canvas: var(--palette-teal-dark);
+  --app-border: var(--palette-teal-very-light);
+  --app-text: var(--palette-teal-very-light);
+  --app-muted: var(--palette-teal-light);
+  --app-accent: var(--palette-green-medium);
 }
 
 @theme inline {

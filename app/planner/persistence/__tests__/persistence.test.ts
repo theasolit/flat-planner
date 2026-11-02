@@ -58,6 +58,77 @@ describe("flat import validation", () => {
     );
   });
 
+  it("preserves flat and furniture lock states and defaults older data to unlocked", () => {
+    const lockedFlat: Flat = {
+      ...validFlat,
+      isFlatLocked: true,
+      furnitureTemplates: [
+        {
+          id: "sofa-template",
+          name: "Sofa",
+          shape: "rectangle",
+          width: 100,
+          length: 60,
+        },
+      ],
+      furniturePlacements: [
+        {
+          id: "sofa-placement",
+          templateId: "sofa-template",
+          roomId: 1,
+          locked: true,
+          x: 90,
+          y: 80,
+          rotation: 0,
+        },
+      ],
+    };
+
+    expect(parseFlatData(serializeFlatData(lockedFlat))).toEqual(lockedFlat);
+    expect(
+      parseFlatData(
+        JSON.stringify({
+          ...validFlat,
+          furniturePlacements: [
+            {
+              id: "sofa-placement",
+              templateId: "sofa-template",
+              roomId: 1,
+              x: 90,
+              y: 80,
+              rotation: 0,
+            },
+          ],
+        }),
+      ).furniturePlacements?.[0]?.locked,
+    ).toBeUndefined();
+  });
+
+  it("rejects malformed lock fields", () => {
+    expect(() =>
+      parseFlatData(JSON.stringify({ ...validFlat, isFlatLocked: "yes" })),
+    ).toThrow("The file does not contain a valid flat planner layout.");
+
+    expect(() =>
+      parseFlatData(
+        JSON.stringify({
+          ...validFlat,
+          furniturePlacements: [
+            {
+              id: "sofa-placement",
+              templateId: "sofa-template",
+              roomId: 1,
+              locked: "yes",
+              x: 90,
+              y: 80,
+              rotation: 0,
+            },
+          ],
+        }),
+      ),
+    ).toThrow("The file does not contain a valid flat planner layout.");
+  });
+
   it("preserves door swing direction and rejects invalid directions", () => {
     const flatWithDoorSwing = {
       ...validFlat,
@@ -124,6 +195,76 @@ describe("flat import validation", () => {
 
     expect(parseFlatData(JSON.stringify(flatWithComposedFurniture))).toEqual(
       flatWithComposedFurniture,
+    );
+  });
+
+  it("preserves mirrored room and furniture components and accepts legacy components", () => {
+    const flatWithMirroredComponents: Flat = {
+      ...validFlat,
+      rooms: [
+        {
+          ...validFlat.rooms[0]!,
+          components: [
+            {
+              id: "triangle-room",
+              shape: "right-triangle",
+              x: 0,
+              y: 0,
+              width: 200,
+              length: 150,
+              rotation: 90,
+              mirrorHorizontal: true,
+            },
+          ],
+        },
+      ],
+      furnitureTemplates: [
+        {
+          id: "mirrored-table",
+          name: "Mirrored table",
+          shape: "right-triangle",
+          width: 80,
+          length: 60,
+          components: [
+            {
+              id: "triangle-furniture",
+              shape: "right-triangle",
+              x: 0,
+              y: 0,
+              width: 80,
+              length: 60,
+              rotation: 0,
+              mirrorVertical: true,
+            },
+          ],
+        },
+      ],
+    };
+
+    expect(
+      parseFlatData(serializeFlatData(flatWithMirroredComponents)),
+    ).toEqual(flatWithMirroredComponents);
+    expect(parseFlatData(JSON.stringify(validFlat))).toEqual(validFlat);
+  });
+
+  it("rejects malformed component mirror fields", () => {
+    const invalidFlat = {
+      ...validFlat,
+      rooms: [
+        {
+          ...validFlat.rooms[0],
+          components: [
+            {
+              ...validFlat.rooms[0]?.components[0],
+              mirrorHorizontal: "yes",
+            },
+          ],
+        },
+      ],
+    };
+
+    expect(() => parseFlatData(JSON.stringify(invalidFlat))).toThrow(
+      "The file does not contain a valid flat planner layout.",
     );
   });
 

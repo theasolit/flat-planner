@@ -41,7 +41,6 @@ export function ShapeCompositionForm({
     components: RoomComponent[],
   ) => void;
 }) {
-  const [shape, setShape] = useState<RoomComponent["shape"]>("rectangle");
   const [shapeWidth, setShapeWidth] = useState(newShapeWidth);
   const [shapeLength, setShapeLength] = useState(newShapeLength);
   const [components, setComponents] = useState<RoomComponent[]>(
@@ -58,10 +57,9 @@ export function ShapeCompositionForm({
         },
       ],
   );
-  const [selectedComponentId, setSelectedComponentId] =
-    useState<string | null>(
-      () => initialComponents?.[0]?.id ?? "draft-base",
-    );
+  const [selectedComponentId, setSelectedComponentId] = useState<string | null>(
+    null,
+  );
   const [componentDrag, setComponentDrag] = useState<{
     id: string;
     pointerId: number;
@@ -105,23 +103,26 @@ export function ShapeCompositionForm({
     return [coordinates.x, coordinates.y];
   }
 
-  function addShape() {
+  function addShape(componentShape: RoomComponent["shape"]) {
+    const widthToAdd = selectedComponent?.width ?? shapeWidth;
+    const lengthToAdd = selectedComponent?.length ?? shapeLength;
+
     if (
-      !Number.isFinite(shapeWidth) ||
-      !Number.isFinite(shapeLength) ||
-      shapeWidth <= 0 ||
-      shapeLength <= 0
+      !Number.isFinite(widthToAdd) ||
+      !Number.isFinite(lengthToAdd) ||
+      widthToAdd <= 0 ||
+      lengthToAdd <= 0
     ) {
       return;
     }
 
     const nextComponent: RoomComponent = {
       id: crypto.randomUUID(),
-      shape,
+      shape: componentShape,
       x: maxX,
       y: minY,
-      width: shapeWidth,
-      length: shape === "circle" ? shapeWidth : shapeLength,
+      width: widthToAdd,
+      length: componentShape === "circle" ? widthToAdd : lengthToAdd,
       rotation: 0,
     };
 
@@ -146,6 +147,64 @@ export function ShapeCompositionForm({
           : component,
       ),
     );
+  }
+
+  function updateShapeDimension(field: "width" | "length", value: number) {
+    if (!Number.isFinite(value) || value <= 0) {
+      return;
+    }
+
+    if (selectedComponent?.shape === "circle") {
+      setShapeWidth(value);
+      setShapeLength(value);
+    } else if (field === "width") {
+      setShapeWidth(value);
+    } else {
+      setShapeLength(value);
+    }
+
+    updateSelectedComponentSize(field, value);
+  }
+
+  function toggleSelectedComponentMirror(
+    direction: "mirrorHorizontal" | "mirrorVertical",
+  ) {
+    if (!selectedComponent) {
+      return;
+    }
+
+    setComponents((current) =>
+      current.map((component) =>
+        component.id === selectedComponent.id
+          ? { ...component, [direction]: !component[direction] }
+          : component,
+      ),
+    );
+  }
+
+  function rotateSelectedComponent(direction: 1 | -1) {
+    if (!selectedComponent) {
+      return;
+    }
+
+    setComponents((current) =>
+      current.map((component) =>
+        component.id === selectedComponent.id
+          ? {
+              ...component,
+              rotation: (component.rotation + direction * 90 + 360) % 360,
+            }
+          : component,
+      ),
+    );
+  }
+
+  function deselectOnCanvasPointerDown(
+    event: PointerEvent<SVGSVGElement>,
+  ) {
+    if (event.target === event.currentTarget) {
+      setSelectedComponentId(null);
+    }
   }
 
   function moveComponent(event: PointerEvent<SVGSVGElement>) {
@@ -261,7 +320,7 @@ export function ShapeCompositionForm({
   }
 
   return (
-    <div className={styles.roomCreator}>
+    <div className={styles.roomCreator} data-testid="shape-composition-creator">
       <div className={styles.creatorHeader}>
         <button
           className={styles.creatorBackButton}
@@ -275,11 +334,26 @@ export function ShapeCompositionForm({
         <h2 className={`${sharedStyles.workspaceTitle} ${styles.creatorTitle}`}>
           {title ?? (isEditing ? "Edit room" : "Create a room")}
         </h2>
+        <button
+          className={sharedStyles.saveButton}
+          type="button"
+          disabled={!name.trim() || components.length === 0}
+          onClick={saveComposition}
+        >
+          {saveLabel ?? "Save"}
+        </button>
       </div>
 
-      <div className={sharedStyles.roomCreatorContent}>
-        <div className={sharedStyles.dimensionFields}>
-          <label className={sharedStyles.dimensionField}>
+      <div
+        className={sharedStyles.roomCreatorContent}
+        data-testid="shape-composition-work-area"
+      >
+        <div
+          className={`${sharedStyles.dimensionFields} ${styles.creatorFields}`}
+        >
+          <label
+            className={`${sharedStyles.dimensionField} ${styles.stableField}`}
+          >
             {nameLabel}
             <input
               className={sharedStyles.dimensionInput}
@@ -289,7 +363,6 @@ export function ShapeCompositionForm({
             />
           </label>
 
-          <span className={sharedStyles.dimensionField}>Add a shape</span>
           <div className={styles.shapePicker}>
             {(
               [
@@ -300,149 +373,162 @@ export function ShapeCompositionForm({
             ).map(([value, label]) => (
               <button
                 key={value}
-                className={sharedStyles.roomButton}
+                className={styles.shapePickerButton}
                 type="button"
-                aria-pressed={shape === value}
-                onClick={() => setShape(value)}
+                aria-label={`Add ${label.toLowerCase()}`}
+                title={`Add ${label.toLowerCase()}`}
+                disabled={
+                  !Number.isFinite(selectedComponent?.width ?? shapeWidth) ||
+                  !Number.isFinite(selectedComponent?.length ?? shapeLength) ||
+                  (selectedComponent?.width ?? shapeWidth) <= 0 ||
+                  (selectedComponent?.length ?? shapeLength) <= 0
+                }
+                onClick={() => {
+                  addShape(value);
+                }}
               >
-                {label}
+                {value === "rectangle" && (
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M5 5h14v14H5zM12 9v6M9 12h6" />
+                  </svg>
+                )}
+                {value === "right-triangle" && (
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M5 19V5l14 14H5zM12 12l2 2" />
+                  </svg>
+                )}
+                {value === "circle" && (
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <circle cx="12" cy="12" r="8" />
+                    <path d="M12 9v6M9 12h6" />
+                  </svg>
+                )}
               </button>
             ))}
           </div>
 
-          {selectedComponent && (
-            <>
-              <label className={sharedStyles.dimensionField}>
-                Selected shape width (cm)
-                <input
-                  className={sharedStyles.dimensionInput}
-                  type="number"
-                  min="1"
-                  value={selectedComponent.width}
-                  onChange={(event) =>
-                    updateSelectedComponentSize(
-                      "width",
-                      Number(event.target.value),
-                    )
-                  }
-                />
-              </label>
-
-              {selectedComponent.shape !== "circle" && (
-                <label className={sharedStyles.dimensionField}>
-                  Selected shape length (cm)
-                  <input
-                    className={sharedStyles.dimensionInput}
-                    type="number"
-                    min="1"
-                    value={selectedComponent.length}
-                    onChange={(event) =>
-                      updateSelectedComponentSize(
-                        "length",
-                        Number(event.target.value),
-                      )
-                    }
-                  />
-                </label>
-              )}
-            </>
-          )}
-
-          <label className={sharedStyles.dimensionField}>
-            New shape width (cm)
+          <label
+            className={`${sharedStyles.dimensionField} ${styles.stableField}`}
+          >
+            Width (cm)
             <input
               className={sharedStyles.dimensionInput}
               type="number"
               min="1"
-              value={shapeWidth}
-              onChange={(event) => setShapeWidth(Number(event.target.value))}
+              value={selectedComponent?.width ?? shapeWidth}
+              onChange={(event) =>
+                updateShapeDimension("width", Number(event.target.value))
+              }
             />
           </label>
 
-          {shape !== "circle" && (
-            <label className={sharedStyles.dimensionField}>
-              New shape length (cm)
-              <input
-                className={sharedStyles.dimensionInput}
-                type="number"
-                min="1"
-                value={shapeLength}
-                onChange={(event) => setShapeLength(Number(event.target.value))}
-              />
-            </label>
-          )}
-
-          <button
-            className={styles.addRoomButton}
-            type="button"
-            disabled={
-              !Number.isFinite(shapeWidth) ||
-              !Number.isFinite(shapeLength) ||
-              shapeWidth <= 0 ||
-              shapeLength <= 0
-            }
-            onClick={addShape}
+          <label
+            className={`${sharedStyles.dimensionField} ${styles.stableField}`}
           >
-            Add shape (snaps to the right)
-          </button>
-
-          <button
-            className={styles.addRoomButton}
-            type="button"
-            disabled={!selectedComponentId}
-            onClick={() => {
-              const selected = components.find(
-                (component) => component.id === selectedComponentId,
-              );
-
-              if (!selected) {
-                return;
+            Length (cm)
+            <input
+              className={sharedStyles.dimensionInput}
+              type="number"
+              min="1"
+              value={selectedComponent?.length ?? shapeLength}
+              onChange={(event) =>
+                updateShapeDimension("length", Number(event.target.value))
               }
+            />
+          </label>
 
-              setComponents((current) =>
-                current.map((component) =>
-                  component.id === selected.id
-                    ? {
-                      ...component,
-                      rotation: (component.rotation + 90) % 360,
-                    }
-                    : component,
-                ),
-              );
-            }}
+          <div
+            className={styles.shapeActions}
+            role="group"
+            aria-label="Shape actions"
+            data-testid="shape-actions"
           >
-            Rotate selected shape 90°
-          </button>
+            <button
+              className={styles.shapeActionButton}
+              type="button"
+              aria-label="Rotate selected shape clockwise"
+              title="Rotate selected shape clockwise"
+              disabled={!selectedComponent}
+              onClick={() => rotateSelectedComponent(-1)}
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M20 11a8 8 0 0 0-14-5L4 8M4 3v5h5" />
+                <path d="M12 8v4l3 2" />
+              </svg>
+            </button>
 
-          <button
-            className={styles.addRoomButton}
-            type="button"
-            disabled={components.length <= 1 || !selectedComponentId}
-            onClick={() => {
-              setComponents((current) =>
-                current.filter(
-                  (component) => component.id !== selectedComponentId,
-                ),
-              );
-              setSelectedComponentId(null);
-            }}
-          >
-            Remove selected shape
-          </button>
+            <button
+              className={styles.shapeActionButton}
+              type="button"
+              aria-label="Rotate selected shape counterclockwise"
+              title="Rotate selected shape counterclockwise"
+              disabled={!selectedComponent}
+              onClick={() => rotateSelectedComponent(1)}
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M4 11a8 8 0 0 1 14-5l2 2M20 3v5h-5" />
+                <path d="M12 8v4l-3 2" />
+              </svg>
+            </button>
+
+            <button
+              className={styles.shapeActionButton}
+              type="button"
+              aria-label="Mirror selected shape across horizontal axis"
+              title="Mirror selected shape top/bottom"
+              aria-pressed={selectedComponent?.mirrorHorizontal ?? false}
+              disabled={!selectedComponent}
+              onClick={() => toggleSelectedComponentMirror("mirrorHorizontal")}
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M4 12h16M8 5l4 4 4-4M8 19l4-4 4 4" />
+              </svg>
+            </button>
+
+            <button
+              className={styles.shapeActionButton}
+              type="button"
+              aria-label="Mirror selected shape across vertical axis"
+              title="Mirror selected shape left/right"
+              aria-pressed={selectedComponent?.mirrorVertical ?? false}
+              disabled={!selectedComponent}
+              onClick={() => toggleSelectedComponentMirror("mirrorVertical")}
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 4v16M5 8l4 4-4 4M19 8l-4 4 4 4" />
+              </svg>
+            </button>
+
+            <button
+              className={styles.shapeActionButton}
+              type="button"
+              aria-label="Remove selected shape"
+              title="Remove selected shape"
+              disabled={components.length <= 1 || !selectedComponent}
+              onClick={() => {
+                if (!selectedComponent) {
+                  return;
+                }
+
+                setComponents((current) =>
+                  current.filter(
+                    (component) => component.id !== selectedComponent.id,
+                  ),
+                );
+                setSelectedComponentId(null);
+              }}
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M4 7h16M10 11v6m4-6v6M6 7l1 14h10l1-14M9 7V4h6v3" />
+              </svg>
+            </button>
+          </div>
 
           <p className={sharedStyles.helperText}>
             Drag shapes in the preview to attach them. Nearby edges snap
             together.
           </p>
 
-          <button
-            className={styles.addRoomButton}
-            type="button"
-            disabled={!name.trim() || components.length === 0}
-            onClick={saveComposition}
-          >
-            {saveLabel ?? (isEditing ? "Save room" : "Add room to flat")}
-          </button>
         </div>
 
         <ShapeCompositionCanvas
@@ -456,6 +542,7 @@ export function ShapeCompositionForm({
           label={`${name || previewName} — ${Math.round(width)} × ${Math.round(length)} cm · ${Number((getComponentsArea(components) / 10000).toFixed(1))} m²`}
           onPointerMove={moveComponent}
           onPointerUp={finishComponentDrag}
+          onCanvasPointerDown={deselectOnCanvasPointerDown}
           onComponentPointerDown={startComponentDrag}
         />
       </div>

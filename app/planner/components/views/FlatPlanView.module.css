@@ -26,8 +26,3 @@
     font: inherit;
     cursor: pointer;
 }
-
-.zoomButton:disabled {
-    cursor: not-allowed;
-    opacity: 0.5;
-}

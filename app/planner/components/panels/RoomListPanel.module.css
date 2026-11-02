@@ -23,8 +23,8 @@
     cursor: pointer;
 }
 
-.flatLockButton:hover,
-.flatLockButton:focus-visible {
+.flatLockButton:not(:disabled):hover,
+.flatLockButton:not(:disabled):focus-visible {
     background-color: var(--app-canvas);
 }
 

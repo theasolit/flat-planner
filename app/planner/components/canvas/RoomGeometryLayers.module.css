@@ -45,6 +45,43 @@
     pointer-events: none;
 }
 
+.furnitureCompositionLabel {
+    fill: var(--palette-blue-very-light);
+    font-family: inherit;
+    font-size: 24px;
+    pointer-events: none;
+}
+
+.furnitureCompositionLabelSelected {
+    fill: var(--palette-blue-dark);
+}
+
+.furnitureCompositionOutline {
+    fill: var(--palette-blue-dark);
+    stroke: var(--palette-blue-light);
+    stroke-width: 2;
+    vector-effect: non-scaling-stroke;
+}
+
+.furnitureCompositionOutlineSelected {
+    fill: var(--palette-blue-light);
+    stroke: var(--palette-blue-medium);
+}
+
+.furnitureCompositionHitTarget {
+    fill: transparent;
+    cursor: grab;
+}
+
+.furnitureCompositionHitTarget:active {
+    cursor: grabbing;
+}
+
+.furnitureCompositionHitTargetLocked,
+.furnitureCompositionHitTargetLocked:active {
+    cursor: default;
+}
+
 .canonicalWallLayer {
     position: absolute;
     inset: 0;

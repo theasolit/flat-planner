@@ -1,5 +1,6 @@
 import sharedStyles from "../../FlatPlanner.module.css";
 import styles from "./RoomGeometryLayers.module.css";
+import { useLayoutEffect, useRef, useState } from "react";
 import type { PointerEvent } from "react";
 import type {
   Pair,
@@ -11,6 +12,9 @@ import type {
   WallSegment,
 } from "../../types";
 import {
+  getFurnitureTemplateComponents,
+  getFurnitureTemplateLabelPlacement,
+  getFurnitureTemplateOutline,
   getComponentRing,
   getRoomBoundaryEdges,
   getRoomEdgeSide,
@@ -130,41 +134,117 @@ export function RoomShapeLayer({ room }: { room: Room }) {
 
 export function FurnitureTemplateLayer({
   template,
+  isSelected = false,
+  showLabel = true,
+  interactive = true,
+  isLocked = false,
 }: {
   template: FurnitureTemplate;
+  isSelected?: boolean;
+  showLabel?: boolean;
+  interactive?: boolean;
+  isLocked?: boolean;
 }) {
-  const components =
-    template.components ??
-    [
-      {
-        id: "legacy-template-shape",
-        shape: template.shape,
-        x: 0,
-        y: 0,
-        width: template.width,
-        length: template.length,
-        rotation: 0,
-      } satisfies RoomComponent,
+  const components = getFurnitureTemplateComponents(template);
+  const outline = getFurnitureTemplateOutline(template);
+  const { center, clearance } = getFurnitureTemplateLabelPlacement(template);
+  const centerX = center[0];
+  const centerY = center[1];
+  const labelRef = useRef<SVGTextElement>(null);
+  const [labelScale, setLabelScale] = useState(1);
+  const componentPath = (component: RoomComponent) =>
+    `${getComponentRing(component)
+      .map(([x, y], index) =>
+        `${index === 0 ? "M" : "L"} ${x} ${y}`,
+      )
+      .join(" ")} Z`;
+
+  useLayoutEffect(() => {
+    const text = labelRef.current;
+
+    if (!text || clearance <= 0) {
+      setLabelScale(1);
+      return;
+    }
+
+    const bounds = text.getBBox();
+    const corners: Pair[] = [
+      [bounds.x, bounds.y],
+      [bounds.x + bounds.width, bounds.y],
+      [bounds.x, bounds.y + bounds.height],
+      [bounds.x + bounds.width, bounds.y + bounds.height],
     ];
+    const furthestCorner = Math.max(
+      ...corners.map(([x, y]) =>
+        Math.hypot(x - centerX, y - centerY),
+      ),
+    );
+
+    setLabelScale(
+      furthestCorner > 0
+        ? Math.min(1, clearance / furthestCorner)
+        : 1,
+    );
+  }, [centerX, centerY, clearance, template.name]);
 
   return (
     <svg
       className={styles.furnitureCompositionLayer}
       viewBox={`0 0 ${template.width} ${template.length}`}
       preserveAspectRatio="none"
-      aria-hidden="true"
+      role="img"
+      aria-label={template.name}
     >
       {components.map((component) => (
         <path
           key={component.id}
-          className={sharedStyles.furnitureCompositionShape}
-          d={`${getComponentRing(component)
-            .map(([x, y], index) =>
-              `${index === 0 ? "M" : "L"} ${x} ${y}`,
-            )
-            .join(" ")} Z`}
+          className={`${styles.furnitureCompositionHitTarget} ${
+            isLocked ? styles.furnitureCompositionHitTargetLocked : ""
+          }`}
+          data-testid="furniture-component-hit-target"
+          pointerEvents={interactive ? "visiblePainted" : "none"}
+          d={componentPath(component)}
         />
       ))}
+      <path
+        className={`${styles.furnitureCompositionOutline} ${
+          isSelected ? styles.furnitureCompositionOutlineSelected : ""
+        }`}
+        data-testid="furniture-union-shape"
+        fillRule="evenodd"
+        d={outline
+          .map((polygon) =>
+            polygon
+              .map((ring) =>
+                ring
+                  .map(
+                    ([x, y], index) =>
+                      `${index === 0 ? "M" : "L"} ${x} ${y}`,
+                  )
+                  .join(" ") + " Z",
+              )
+              .join(" "),
+          )
+          .join(" ")}
+        pointerEvents={interactive ? "none" : "visiblePainted"}
+      />
+      {showLabel && (
+        <text
+          ref={labelRef}
+          className={`${styles.furnitureCompositionLabel} ${
+            isSelected ? styles.furnitureCompositionLabelSelected : ""
+          }`}
+          x={centerX}
+          y={centerY}
+          transform={`translate(${centerX} ${centerY}) scale(${labelScale}) translate(${-centerX} ${-centerY})`}
+          data-label-scale={labelScale}
+          textAnchor="middle"
+          dominantBaseline="central"
+          pointerEvents="none"
+        >
+          {template.name}
+        </text>
+      )}
     </svg>
   );
 }
@@ -174,6 +254,7 @@ export function WallOpeningsLayer({
   openings,
   wallThickness,
   wallThicknesses,
+  isLocked = false,
   onPointerDown,
   onPointerMove,
   onPointerUp,
@@ -182,6 +263,7 @@ export function WallOpeningsLayer({
   openings: WallOpening[];
   wallThickness: number;
   wallThicknesses: Record<string, number>;
+  isLocked?: boolean;
   onPointerDown: (
     event: PointerEvent<HTMLButtonElement>,
     opening: WallOpening,
@@ -238,6 +320,7 @@ export function WallOpeningsLayer({
         type="button"
         aria-label={`Drag ${opening.kind === "window" ? "window" : "doorway"}`}
         className={sharedStyles.wallOpening}
+        disabled={isLocked}
         style={{
           left: `${left}px`,
           top: `${top}px`,

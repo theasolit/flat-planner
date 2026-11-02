@@ -7,7 +7,6 @@ import {
   RoomShapeLayer,
   WallOpeningsLayer,
 } from "./RoomGeometryLayers";
-import { getRoomArea } from "../../geometry/geometry";
 import type {
   FurniturePlacement,
   FurnitureTemplate,
@@ -23,6 +22,7 @@ type Props = {
   canvasRef: RefObject<HTMLDivElement | null>;
   canvasSize: CanvasSize;
   selectedRoom: Room;
+  isFlatLocked: boolean;
   rooms: Room[];
   bounds: PlanBounds | null;
   scale: number;
@@ -53,6 +53,7 @@ export default function RoomDesignerCanvas({
   canvasRef,
   canvasSize,
   selectedRoom,
+  isFlatLocked,
   rooms,
   bounds,
   scale,
@@ -116,11 +117,6 @@ export default function RoomDesignerCanvas({
             data-room-id={room.id}
           >
             <RoomShapeLayer room={room} />
-            <span className={sharedStyles.roomLabel}>
-              {room.name}
-              <br />
-              {Number((getRoomArea(room) / 10000).toFixed(1))} m²
-            </span>
           </div>
         ))}
 
@@ -129,6 +125,7 @@ export default function RoomDesignerCanvas({
           openings={wallOpenings}
           wallThickness={wallThickness}
           wallThicknesses={wallThicknesses}
+          isLocked={isFlatLocked}
           onPointerDown={onOpeningPointerDown}
           onPointerMove={onOpeningPointerMove}
           onPointerUp={onOpeningPointerUp}
@@ -171,8 +168,11 @@ export default function RoomDesignerCanvas({
                 onPointerUp={onFurniturePointerUp}
                 onPointerCancel={onFurniturePointerUp}
               >
-                <FurnitureTemplateLayer template={template} />
-                <span className={sharedStyles.furnitureLabel}>{template.name}</span>
+                <FurnitureTemplateLayer
+                  template={template}
+                  isSelected={selectedFurnitureId === placement.id}
+                  isLocked={placement.locked}
+                />
               </div>
             );
           })}

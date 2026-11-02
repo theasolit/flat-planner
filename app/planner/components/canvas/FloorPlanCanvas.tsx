@@ -25,6 +25,7 @@ type Props = {
   canvasSize: CanvasSize;
   bounds: PlanBounds | null;
   scale: number;
+  isFlatLocked: boolean;
   rooms: Room[];
   selectedRoomId: number | null;
   selectedFurnitureId: string | null;
@@ -49,12 +50,6 @@ type Props = {
   ) => void;
   onRoomPointerMove: (event: PointerEvent<HTMLButtonElement>) => void;
   onRoomPointerUp: (event: PointerEvent<HTMLButtonElement>) => void;
-  onFurniturePointerDown: (
-    event: PointerEvent<HTMLDivElement>,
-    placement: FurniturePlacement,
-  ) => void;
-  onFurniturePointerMove: (event: PointerEvent<HTMLDivElement>) => void;
-  onFurniturePointerUp: (event: PointerEvent<HTMLDivElement>) => void;
 };
 
 export default function FloorPlanCanvas({
@@ -62,6 +57,7 @@ export default function FloorPlanCanvas({
   canvasSize,
   bounds,
   scale,
+  isFlatLocked,
   rooms,
   selectedRoomId,
   selectedFurnitureId,
@@ -80,9 +76,6 @@ export default function FloorPlanCanvas({
   onRoomPointerDown,
   onRoomPointerMove,
   onRoomPointerUp,
-  onFurniturePointerDown,
-  onFurniturePointerMove,
-  onFurniturePointerUp,
 }: Props) {
   return (
     <div
@@ -122,6 +115,7 @@ export default function FloorPlanCanvas({
             openings={wallOpenings}
             wallThickness={wallThickness}
             wallThicknesses={wallThicknesses}
+            isLocked={isFlatLocked}
             onPointerDown={onOpeningPointerDown}
             onPointerMove={onOpeningPointerMove}
             onPointerUp={onOpeningPointerUp}
@@ -132,6 +126,7 @@ export default function FloorPlanCanvas({
               key={room.id}
               type="button"
               className={`${sharedStyles.room} ${selectedRoomId === room.id ? sharedStyles.selectedRoom : ""
+                } ${isFlatLocked ? sharedStyles.lockedRoom : ""
                 }`}
               style={{
                 left: `${room.x / 2}px`,
@@ -147,11 +142,6 @@ export default function FloorPlanCanvas({
               data-room-id={room.id}
             >
               <RoomShapeLayer room={room} />
-              <span className={sharedStyles.roomLabel}>
-                {room.name}
-                <br />
-                {Number((getRoomArea(room) / 10000).toFixed(1))} m²
-              </span>
             </button>
           ))}
 
@@ -183,18 +173,33 @@ export default function FloorPlanCanvas({
                   height: `${length / 2}px`,
                   transform: `rotate(${placement.rotation}deg)`,
                 }}
-                onPointerDown={(event) =>
-                  onFurniturePointerDown(event, placement)
-                }
-                onPointerMove={onFurniturePointerMove}
-                onPointerUp={onFurniturePointerUp}
-                onPointerCancel={onFurniturePointerUp}
               >
-                <FurnitureTemplateLayer template={template} />
-                <span className={sharedStyles.furnitureLabel}>{template.name}</span>
+                <FurnitureTemplateLayer
+                  template={template}
+                  isSelected={selectedFurnitureId === placement.id}
+                  showLabel={false}
+                  interactive={false}
+                />
               </div>
             );
           })}
+          {rooms.map((room) => (
+            <span
+              key={`room-label-${room.id}`}
+              className={sharedStyles.roomLabel}
+              data-testid="room-label"
+              style={{
+                left: `${room.x / 2}px`,
+                top: `${room.y / 2}px`,
+                width: `${room.width / 2}px`,
+                height: `${room.length / 2}px`,
+              }}
+            >
+              {room.name}
+              <br />
+              {Number((getRoomArea(room) / 10000).toFixed(1))} m²
+            </span>
+          ))}
         </div>
       )}
     </div>

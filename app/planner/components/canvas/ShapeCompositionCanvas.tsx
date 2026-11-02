@@ -11,6 +11,7 @@ type Props = {
   label: string;
   onPointerMove: (event: PointerEvent<SVGSVGElement>) => void;
   onPointerUp: (event: PointerEvent<SVGSVGElement>) => void;
+  onCanvasPointerDown: (event: PointerEvent<SVGSVGElement>) => void;
   onComponentPointerDown: (
     component: RoomComponent,
     event: PointerEvent<SVGPathElement>,
@@ -24,21 +25,28 @@ export default function ShapeCompositionCanvas({
   label,
   onPointerMove,
   onPointerUp,
+  onCanvasPointerDown,
   onComponentPointerDown,
 }: Props) {
   return (
-    <div className={sharedStyles.canvas}>
+    <div
+      className={sharedStyles.canvas}
+      data-testid="shape-composition-canvas"
+    >
       <svg
         className={styles.roomCompositionPreview}
+        data-testid="shape-composition-preview"
         viewBox={viewBox}
         preserveAspectRatio="xMidYMid meet"
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerUp}
+        onPointerDown={onCanvasPointerDown}
       >
         {components.map((component) => (
           <path
             key={component.id}
+            data-testid="shape-component"
             className={`${styles.roomCompositionShape} ${
               selectedComponentId === component.id
                 ? styles.roomCompositionShapeSelected

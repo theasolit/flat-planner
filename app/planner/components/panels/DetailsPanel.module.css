@@ -33,3 +33,19 @@
     fill: currentColor;
     stroke: none;
 }
+
+.furnitureLockButton {
+    background-color: var(--app-surface);
+    color: var(--app-text);
+}
+
+.furnitureLockButton:not(:disabled):hover,
+.furnitureLockButton:not(:disabled):focus-visible {
+    border-color: var(--app-border);
+    background-color: var(--app-canvas);
+    color: var(--app-text);
+}
+
+.furnitureLockButton[aria-pressed="true"] {
+    color: var(--palette-blue-dark);
+}

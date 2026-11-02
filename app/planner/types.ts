@@ -25,6 +25,7 @@ export type ComponentBounds = {
 export type Flat = {
   rooms: Room[];
   selectedRoomId: number | null;
+  isFlatLocked?: boolean;
   wallThickness?: number;
   wallThicknesses?: Record<string, number>;
   wallOpenings?: WallOpening[];
@@ -40,6 +41,8 @@ export type RoomComponent = {
   width: number;
   length: number;
   rotation: number;
+  mirrorHorizontal?: boolean;
+  mirrorVertical?: boolean;
 };
 
 export type Room = {
@@ -126,6 +129,7 @@ export type FurniturePlacement = {
   id: string;
   templateId: string;
   roomId: number;
+  locked?: boolean;
   x: number;
   y: number;
   rotation: number;

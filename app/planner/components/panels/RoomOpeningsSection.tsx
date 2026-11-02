@@ -71,7 +71,7 @@ export default function RoomOpeningsSection({
           aria-label={`Add ${singularLabel}`}
           title={`Add ${singularLabel}`}
           onClick={() => addOpeningToRoom(kind)}
-          disabled={!canAddOpening}
+          disabled={isFlatLocked || !canAddOpening}
         >
           +
         </button>
@@ -87,6 +87,7 @@ export default function RoomOpeningsSection({
                   ? styles.doorListButtonSelected
                   : ""
               }`}
+              disabled={isFlatLocked}
               onClick={(event) => {
                 const bounds = event.currentTarget.getBoundingClientRect();
                 positionOpeningDetails(opening.id, bounds.left, bounds.top);
@@ -99,6 +100,7 @@ export default function RoomOpeningsSection({
             <button
               type="button"
               className={styles.deleteOpeningButton}
+              disabled={isFlatLocked}
               aria-label={`Remove ${singularLabel} ${index + 1}`}
               title={`Remove ${singularLabel}`}
               onClick={() => {
@@ -132,6 +134,7 @@ export default function RoomOpeningsSection({
                     <select
                       className={styles.dimensionInput}
                       value={opening.sourceId}
+                      disabled={isFlatLocked}
                       onChange={(event) =>
                         moveOpeningToEdge(opening.id, event.target.value)
                       }
@@ -150,6 +153,7 @@ export default function RoomOpeningsSection({
                       <select
                         className={styles.dimensionInput}
                         value={opening.swingSide ?? "left"}
+                        disabled={isFlatLocked}
                         onChange={(event) =>
                           updateOpeningSwingSide(
                             opening.id,
@@ -169,6 +173,7 @@ export default function RoomOpeningsSection({
                       className={styles.dimensionInput}
                       type="number"
                       min="1"
+                      disabled={isFlatLocked}
                       value={opening.width}
                       onChange={(event) =>
                         updateWallOpening(
@@ -185,6 +190,7 @@ export default function RoomOpeningsSection({
                     <input
                       className={styles.dimensionInput}
                       type="number"
+                      disabled={isFlatLocked}
                       value={opening.offset}
                       onChange={(event) =>
                         updateWallOpening(

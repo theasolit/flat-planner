@@ -45,8 +45,8 @@
     cursor: pointer;
 }
 
-.fileButton:hover,
-.fileButton:focus-visible {
+.fileButton:not(:disabled):hover,
+.fileButton:not(:disabled):focus-visible {
     border-color: var(--app-accent);
 }
 
@@ -78,8 +78,8 @@
     transition: background-color 150ms ease;
 }
 
-.saveButton:hover,
-.saveButton:focus-visible {
+.saveButton:not(:disabled):hover,
+.saveButton:not(:disabled):focus-visible {
     background-color: var(--palette-green-light);
 }
 
@@ -135,7 +135,16 @@
     touch-action: none;
 }
 
-.wallOpening:active {
+.wallOpening:disabled,
+.wallOpening:disabled:hover,
+.wallOpening:disabled:focus-visible {
+    border-color: var(--app-accent);
+    background-color: var(--app-accent);
+    color: inherit;
+    cursor: default;
+}
+
+.wallOpening:not(:disabled):active {
     cursor: grabbing;
 }
 
@@ -156,14 +165,26 @@
 }
 
 .roomLabel {
-    position: relative;
-    z-index: 1;
+    position: absolute;
+    z-index: 5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
     text-align: center;
     pointer-events: none;
+    color: #fff;
+    -webkit-text-stroke: 2px #000;
+    paint-order: stroke fill;
 }
 
 .room:active {
     cursor: grabbing;
+}
+
+.lockedRoom,
+.lockedRoom:active {
+    cursor: default;
 }
 
 .selectedRoom {}
@@ -302,14 +323,9 @@
     cursor: pointer;
 }
 
-.addDoorButton:hover,
-.addDoorButton:focus-visible {
+.addDoorButton:not(:disabled):hover,
+.addDoorButton:not(:disabled):focus-visible {
     background-color: var(--palette-green-light);
-}
-
-.addDoorButton:disabled {
-    opacity: 0.45;
-    cursor: not-allowed;
 }
 
 .addDoorButton svg {
@@ -345,8 +361,8 @@
     stroke-width: 1.8;
 }
 
-.deleteOpeningButton:hover,
-.deleteOpeningButton:focus-visible {
+.deleteOpeningButton:not(:disabled):hover,
+.deleteOpeningButton:not(:disabled):focus-visible {
     border-color: var(--palette-blue-very-light);
     background-color: var(--palette-blue-medium);
     color: var(--palette-blue-very-light);
@@ -386,36 +402,29 @@
     border-radius: 0;
     background: transparent;
     overflow: visible;
-}
-
-.furnitureLabel {
-    position: relative;
-    z-index: 1;
     pointer-events: none;
-}
-
-.furnitureCompositionShape {
-    fill: var(--palette-blue-dark);
-    stroke: var(--palette-blue-light);
-    stroke-width: 2;
-    vector-effect: non-scaling-stroke;
-}
-
-.selectedFurniture .furnitureCompositionShape {
-    fill: var(--palette-blue-light);
-    stroke: var(--palette-blue-medium);
+    cursor: default;
 }
 
 .roomCreatorContent {
     display: grid;
     flex: 1;
     min-height: 0;
-    grid-template-columns: minmax(220px, 1fr) minmax(0, 2fr);
+    align-items: start;
+    grid-template-columns: minmax(220px, 20%) minmax(0, 1fr);
     gap: 16px;
+}
+
+.roomCreatorContent > .dimensionFields {
+    min-height: 0;
+    align-content: start;
+    grid-auto-rows: max-content;
+    overflow-y: auto;
 }
 
 .roomCreatorContent>.canvas {
     width: 100%;
-    height: auto;
+    height: 100%;
+    align-self: start;
     min-height: 0;
 }

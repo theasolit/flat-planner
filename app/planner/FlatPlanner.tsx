@@ -120,6 +120,7 @@ export default function FlatPlanner() {
     addFurnitureTemplate,
     addFurnitureToRoom,
     updateSelectedFurniture,
+    setFurniturePlacementLocked,
     startFurnitureDrag,
     moveFurniture,
     stopFurnitureDrag,
@@ -211,6 +212,7 @@ export default function FlatPlanner() {
   const flatData: Flat = {
     rooms,
     selectedRoomId,
+    isFlatLocked,
     wallThickness,
     wallThicknesses,
     wallOpenings,
@@ -229,6 +231,7 @@ export default function FlatPlanner() {
       // Browser storage is only available after hydration.
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setRooms(savedFlat.rooms);
+      setIsFlatLocked(savedFlat.isFlatLocked ?? false);
       setFurnitureTemplates(savedFlat.furnitureTemplates ?? []);
       setFurniturePlacements(savedFlat.furniturePlacements ?? []);
       setSelectedRoomId(savedFlat.selectedRoomId);
@@ -322,6 +325,7 @@ export default function FlatPlanner() {
     try {
       const flat = parseFlatData(await file.text());
       setRooms(flat.rooms);
+      setIsFlatLocked(flat.isFlatLocked ?? false);
       setSelectedRoomId(flat.selectedRoomId);
       setWallThickness(flat.wallThickness ?? 10);
       setWallThicknesses(flat.wallThicknesses ?? {});
@@ -379,6 +383,10 @@ export default function FlatPlanner() {
   }
 
   function removeFurniturePlacement(placementId: string) {
+    if (furniturePlacements.find((placement) => placement.id === placementId)?.locked) {
+      return;
+    }
+
     setFurniturePlacements((current) =>
       current.filter((placement) => placement.id !== placementId),
     );
@@ -402,6 +410,18 @@ export default function FlatPlanner() {
   }
 
   function removeFurnitureTemplate(templateId: string) {
+    if (
+      furniturePlacements.some(
+        (placement) =>
+          placement.templateId === templateId && placement.locked,
+      )
+    ) {
+      setSaveMessage(
+        "Unlock every placed piece before deleting its furniture template.",
+      );
+      return;
+    }
+
     setFurnitureTemplates((current) =>
       current.filter((template) => template.id !== templateId),
     );
@@ -508,6 +528,7 @@ export default function FlatPlanner() {
               }
               onFitToView={() => setManualFloorPlanScale(null)}
               canvasProps={{
+                isFlatLocked,
                 rooms,
                 selectedRoomId,
                 selectedFurnitureId,
@@ -558,9 +579,6 @@ export default function FlatPlanner() {
                 onRoomPointerDown: startRoomDrag,
                 onRoomPointerMove: moveRoom,
                 onRoomPointerUp: stopRoomDrag,
-                onFurniturePointerDown: startFurnitureDrag,
-                onFurniturePointerMove: moveFurniture,
-                onFurniturePointerUp: stopFurnitureDrag,
               }}
             />
           ) : (
@@ -574,6 +592,7 @@ export default function FlatPlanner() {
                       ? {
                           canvasRef: roomDesignerCanvasRef,
                           canvasSize: roomDesignerCanvasSize,
+                          isFlatLocked,
                           rooms,
                           bounds: roomDesignerBounds,
                           scale: roomDesignerScale,
@@ -596,6 +615,8 @@ export default function FlatPlanner() {
                   templates={furnitureTemplates}
                   onBack={() => {
                     setManualFloorPlanScale(null);
+                    setSelectedFurnitureId(null);
+                    setFurnitureDetailsPosition(null);
                     setEditorMode("flat");
                   }}
                   onAddFurniture={addFurnitureToRoom}
@@ -624,7 +645,7 @@ export default function FlatPlanner() {
                 <ShapeCompositionForm
                   key={editingRoomId ?? "new-room"}
                   name={roomDraftName}
-                  title={editingRoomId === null ? "Create a room" : "Edit room"}
+                  title={editingRoomId === null ? "Room Creator" : "Edit room"}
                   initialComponents={
                     editingRoomId === null
                       ? undefined
@@ -641,10 +662,10 @@ export default function FlatPlanner() {
                 <ShapeCompositionForm
                   key="new-furniture"
                   name={furnitureName}
-                  title="Create furniture template"
-                  nameLabel="Furniture name"
+                  title="Furniture Creator"
+                  nameLabel="Template Name"
                   previewName="New furniture"
-                  saveLabel="Save furniture template"
+                  saveLabel="Save"
                   newShapeWidth={100}
                   newShapeLength={60}
                   initialComponents={[
@@ -691,6 +712,7 @@ export default function FlatPlanner() {
           positionFurnitureDetails={positionFurnitureDetails}
           setSelectedWallId={setSelectedWallId}
           updateSelectedFurniture={updateSelectedFurniture}
+          setFurniturePlacementLocked={setFurniturePlacementLocked}
           removeFurniturePlacement={removeFurniturePlacement}
           updateSelectedWallThickness={updateSelectedWallThickness}
           updateRoomName={updateRoomName}

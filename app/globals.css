@@ -47,3 +47,14 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+button:disabled,
+button:disabled:hover,
+button:disabled:focus-visible {
+  border-color: var(--palette-teal-medium);
+  background-color: var(--palette-teal-dark);
+  color: var(--palette-teal-light);
+  cursor: not-allowed;
+  box-shadow: none;
+  transition: none;
+}

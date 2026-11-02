@@ -30,7 +30,11 @@ function isRoomComponent(value: unknown): value is RoomComponent {
     value.width > 0 &&
     isFiniteNumber(value.length) &&
     value.length > 0 &&
-    isFiniteNumber(value.rotation)
+    isFiniteNumber(value.rotation) &&
+    (value.mirrorHorizontal === undefined ||
+      typeof value.mirrorHorizontal === "boolean") &&
+    (value.mirrorVertical === undefined ||
+      typeof value.mirrorVertical === "boolean")
   );
 }
 
@@ -79,6 +83,7 @@ function isFurniturePlacement(value: unknown): value is FurniturePlacement {
     isFiniteNumber(value.x) &&
     isFiniteNumber(value.y) &&
     isFiniteNumber(value.rotation) &&
+    (value.locked === undefined || typeof value.locked === "boolean") &&
     (value.width === undefined ||
       (isFiniteNumber(value.width) && value.width > 0)) &&
     (value.length === undefined ||
@@ -121,6 +126,8 @@ function isFlat(value: unknown): value is Flat {
     (value.selectedRoomId === null ||
       (Number.isInteger(value.selectedRoomId) &&
         value.rooms.some((room) => room.id === value.selectedRoomId))) &&
+    (value.isFlatLocked === undefined ||
+      typeof value.isFlatLocked === "boolean") &&
     (value.wallThickness === undefined ||
       (isFiniteNumber(value.wallThickness) && value.wallThickness > 0)) &&
     (value.wallThicknesses === undefined ||

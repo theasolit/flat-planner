@@ -120,6 +120,7 @@ export function useFurnitureEditor({
       !placement ||
       !template ||
       !room ||
+      placement.locked ||
       !Number.isFinite(value) ||
       (field !== "rotation" && value <= 0)
     ) {
@@ -190,11 +191,16 @@ export function useFurnitureEditor({
   ) {
     event.preventDefault();
     event.stopPropagation();
-    event.currentTarget.setPointerCapture(event.pointerId);
 
     onSelectFurniture(placement.id);
     setSelectedRoomId(placement.roomId);
     setSelectedWallId(null);
+
+    if (placement.locked) {
+      return;
+    }
+
+    event.currentTarget.setPointerCapture(event.pointerId);
 
     const scale = editorMode === "flat" ? floorPlanScale : roomDesignerScale;
 
@@ -225,6 +231,10 @@ export function useFurnitureEditor({
       : undefined;
 
     if (!placement || !template || !room) {
+      return;
+    }
+
+    if (placement.locked) {
       return;
     }
 
@@ -274,6 +284,18 @@ export function useFurnitureEditor({
     }
   }
 
+  function setFurniturePlacementLocked(placementId: string, locked: boolean) {
+    setFurniturePlacements((current) =>
+      current.map((placement) =>
+        placement.id === placementId ? { ...placement, locked } : placement,
+      ),
+    );
+
+    if (locked && furnitureDrag?.placementId === placementId) {
+      setFurnitureDrag(null);
+    }
+  }
+
   return {
     furnitureTemplates,
     setFurnitureTemplates,
@@ -288,6 +310,7 @@ export function useFurnitureEditor({
     addFurnitureTemplate,
     addFurnitureToRoom,
     updateSelectedFurniture,
+    setFurniturePlacementLocked,
     startFurnitureDrag,
     moveFurniture,
     stopFurnitureDrag,

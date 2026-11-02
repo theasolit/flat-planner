@@ -38,6 +38,10 @@ type Props = {
   ) => void;
   setSelectedWallId: (id: string | null) => void;
   updateSelectedFurniture: (field: "width" | "length" | "rotation", value: number) => void;
+  setFurniturePlacementLocked: (
+    placementId: string,
+    locked: boolean,
+  ) => void;
   removeFurniturePlacement: (placementId: string) => void;
   updateSelectedWallThickness: (value: number) => void;
   updateRoomName: (roomId: number, name: string) => void;
@@ -76,6 +80,7 @@ export default function DetailsPanel({
   positionFurnitureDetails,
   setSelectedWallId,
   updateSelectedFurniture,
+  setFurniturePlacementLocked,
   removeFurniturePlacement,
   updateSelectedWallThickness,
   updateRoomName,
@@ -236,7 +241,32 @@ export default function DetailsPanel({
 
                           <button
                             type="button"
+                            className={`${sharedStyles.deleteOpeningButton} ${styles.furnitureLockButton}`}
+                            aria-label={`${placement.locked ? "Unlock" : "Lock"} ${template?.name ?? "furniture"} ${index + 1}`}
+                            aria-pressed={placement.locked ?? false}
+                            title={`${placement.locked ? "Unlock" : "Lock"} furniture`}
+                            onClick={() =>
+                              setFurniturePlacementLocked(
+                                placement.id,
+                                !placement.locked,
+                              )
+                            }
+                          >
+                            {placement.locked ? (
+                              <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M7 10V7a5 5 0 0 1 9.8-1.3M5 10h14v11H5zM12 14v3" />
+                              </svg>
+                            ) : (
+                              <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M7 10V7a5 5 0 0 1 10 0v3M5 10h14v11H5zM12 14v3" />
+                              </svg>
+                            )}
+                          </button>
+
+                          <button
+                            type="button"
                             className={sharedStyles.deleteOpeningButton}
+                            disabled={placement.locked}
                             aria-label={`Remove ${template?.name ?? "furniture"} ${index + 1}`}
                             title="Remove furniture"
                             onClick={() =>
@@ -302,6 +332,7 @@ export default function DetailsPanel({
                 type="number"
                 min="1"
                 max={selectedRoom?.width}
+                disabled={selectedFurniturePlacement.locked}
                 value={
                   selectedFurniturePlacement.width ??
                   selectedFurnitureTemplate.width
@@ -320,6 +351,7 @@ export default function DetailsPanel({
                   type="number"
                   min="1"
                   max={selectedRoom?.length}
+                  disabled={selectedFurniturePlacement.locked}
                   value={
                     selectedFurniturePlacement.length ??
                     selectedFurnitureTemplate.length
@@ -338,6 +370,7 @@ export default function DetailsPanel({
                 type="number"
                 min="0"
                 max="359"
+                disabled={selectedFurniturePlacement.locked}
                 value={selectedFurniturePlacement.rotation}
                 onChange={(event) =>
                   updateSelectedFurniture("rotation", Number(event.target.value))

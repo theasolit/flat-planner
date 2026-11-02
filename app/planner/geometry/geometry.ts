@@ -2,6 +2,7 @@ import polygonClipping, { type MultiPolygon } from "polygon-clipping";
 import type {
   ComponentWall,
   ComponentBounds,
+  FurnitureTemplate,
   Pair,
   PlanBounds,
   Room,
@@ -10,6 +11,8 @@ import type {
   WallOpening,
   WallSegment,
 } from "../types";
+
+const POLYGON_COORDINATE_SCALE = 1e8;
 
 export function getRoomComponents(room: Room): RoomComponent[] {
   return room.components;
@@ -47,13 +50,43 @@ export function getComponentRing(component: RoomComponent): Pair[] {
     });
   }
 
-  const radians = (component.rotation * Math.PI) / 180;
-  const cosine = Math.cos(radians);
-  const sine = Math.sin(radians);
+  const rotation = ((component.rotation % 360) + 360) % 360;
+  let cosine: number;
+  let sine: number;
+
+  switch (rotation) {
+    case 0:
+      cosine = 1;
+      sine = 0;
+      break;
+    case 90:
+      cosine = 0;
+      sine = 1;
+      break;
+    case 180:
+      cosine = -1;
+      sine = 0;
+      break;
+    case 270:
+      cosine = 0;
+      sine = -1;
+      break;
+    default: {
+      const radians = (rotation * Math.PI) / 180;
+      cosine = Math.cos(radians);
+      sine = Math.sin(radians);
+    }
+  }
+  const horizontalDirection = component.mirrorVertical ? -1 : 1;
+  const verticalDirection = component.mirrorHorizontal ? -1 : 1;
 
   return points.map(([x, y]) => [
-    centerX + (x - centerX) * cosine - (y - centerY) * sine,
-    centerY + (x - centerX) * sine + (y - centerY) * cosine,
+    centerX +
+      (x - centerX) * horizontalDirection * cosine -
+      (y - centerY) * verticalDirection * sine,
+    centerY +
+      (x - centerX) * horizontalDirection * sine +
+      (y - centerY) * verticalDirection * cosine,
   ]);
 }
 
@@ -87,14 +120,219 @@ export function getComponentsBounds(
   };
 }
 
+export function getFurnitureTemplateComponents(
+  template: FurnitureTemplate,
+): RoomComponent[] {
+  return (
+    template.components ?? [
+      {
+        id: "legacy-template-shape",
+        shape: template.shape,
+        x: 0,
+        y: 0,
+        width: template.width,
+        length: template.length,
+        rotation: 0,
+      },
+    ]
+  );
+}
+
+export function getFurnitureTemplateOutline(
+  template: FurnitureTemplate,
+): MultiPolygon {
+  return getComponentsOutline(getFurnitureTemplateComponents(template), [0, 0]);
+}
+
+function isPointInRing(point: Pair, ring: Pair[]): boolean {
+  let inside = false;
+
+  for (let index = 0, previous = ring.length - 1; index < ring.length; previous = index, index += 1) {
+    const [x, y] = ring[index]!;
+    const [previousX, previousY] = ring[previous]!;
+    const crossesRay =
+      y > point[1] !== previousY > point[1] &&
+      point[0] <
+        ((previousX - x) * (point[1] - y)) / (previousY - y) + x;
+
+    if (crossesRay) {
+      inside = !inside;
+    }
+  }
+
+  return inside;
+}
+
+function getPointToSegmentDistance(point: Pair, start: Pair, end: Pair): number {
+  const deltaX = end[0] - start[0];
+  const deltaY = end[1] - start[1];
+  const lengthSquared = deltaX * deltaX + deltaY * deltaY;
+  const projection =
+    lengthSquared === 0
+      ? 0
+      : Math.max(
+          0,
+          Math.min(
+            1,
+            ((point[0] - start[0]) * deltaX +
+              (point[1] - start[1]) * deltaY) /
+              lengthSquared,
+          ),
+        );
+  const closestX = start[0] + projection * deltaX;
+  const closestY = start[1] + projection * deltaY;
+
+  return Math.hypot(point[0] - closestX, point[1] - closestY);
+}
+
+function getPolygonClearance(point: Pair, polygon: MultiPolygon[number]): number {
+  const inside = polygon
+    .map((ring) => isPointInRing(point, ring))
+    .reduce((isInside, ringContainsPoint) => isInside !== ringContainsPoint, false);
+
+  if (!inside) {
+    return -Infinity;
+  }
+
+  return Math.min(
+    ...polygon.flatMap((ring) =>
+      ring.map((start, index) =>
+        getPointToSegmentDistance(
+          point,
+          start,
+          ring[(index + 1) % ring.length]!,
+        ),
+      ),
+    ),
+  );
+}
+
+function getPolygonLabelCenter(
+  polygon: MultiPolygon[number],
+): { point: Pair; clearance: number } | null {
+  const exterior = polygon[0];
+
+  if (!exterior?.length) {
+    return null;
+  }
+
+  const minX = Math.min(...exterior.map(([x]) => x));
+  const minY = Math.min(...exterior.map(([, y]) => y));
+  const maxX = Math.max(...exterior.map(([x]) => x));
+  const maxY = Math.max(...exterior.map(([, y]) => y));
+  const initialStep = Math.min(maxX - minX, maxY - minY) / 20;
+
+  if (initialStep <= 0) {
+    return null;
+  }
+
+  let bestPoint: Pair | null = null;
+  let bestClearance = -Infinity;
+  let bestCenterDistance = Infinity;
+  const boundsCenter: Pair = [(minX + maxX) / 2, (minY + maxY) / 2];
+
+  function considerPoint(point: Pair) {
+    const clearance = getPolygonClearance(point, polygon);
+    const centerDistance = Math.hypot(
+      point[0] - boundsCenter[0],
+      point[1] - boundsCenter[1],
+    );
+
+    if (
+      clearance > bestClearance + 1e-9 ||
+      (Math.abs(clearance - bestClearance) <= 1e-9 &&
+        centerDistance < bestCenterDistance)
+    ) {
+      bestPoint = point;
+      bestClearance = clearance;
+      bestCenterDistance = centerDistance;
+    }
+  }
+
+  for (let xIndex = 0; xIndex <= 20; xIndex += 1) {
+    for (let yIndex = 0; yIndex <= 20; yIndex += 1) {
+      const point: Pair = [
+        minX + ((maxX - minX) * xIndex) / 20,
+        minY + ((maxY - minY) * yIndex) / 20,
+      ];
+      considerPoint(point);
+    }
+  }
+
+  if (!bestPoint) {
+    return null;
+  }
+
+  let step = initialStep / 2;
+
+  for (let iteration = 0; iteration < 6; iteration += 1) {
+    for (let xOffset = -2; xOffset <= 2; xOffset += 1) {
+      for (let yOffset = -2; yOffset <= 2; yOffset += 1) {
+        const point: Pair = [
+          bestPoint[0] + xOffset * step,
+          bestPoint[1] + yOffset * step,
+        ];
+        considerPoint(point);
+      }
+    }
+
+    step /= 2;
+  }
+
+  return { point: bestPoint, clearance: bestClearance };
+}
+
+export function getFurnitureTemplateLabelPlacement(
+  template: FurnitureTemplate,
+): { center: Pair; clearance: number } {
+  const components = getFurnitureTemplateComponents(template);
+  const outline = getComponentsOutline(components, [0, 0]);
+  const placement = outline
+    .map(getPolygonLabelCenter)
+    .filter(
+      (candidate): candidate is { point: Pair; clearance: number } =>
+        candidate !== null,
+    )
+    .sort((first, second) => second.clearance - first.clearance)[0];
+
+  if (placement) {
+    return { center: placement.point, clearance: placement.clearance };
+  }
+
+  const bounds = getComponentsBounds(components);
+
+  if (!bounds) {
+    return {
+      center: [template.width / 2, template.length / 2],
+      clearance: 0,
+    };
+  }
+
+  return {
+    center: [
+      (bounds.minX + bounds.maxX) / 2,
+      (bounds.minY + bounds.maxY) / 2,
+    ],
+    clearance: 0,
+  };
+}
+
+export function getFurnitureTemplateLabelCenter(template: FurnitureTemplate): Pair {
+  return getFurnitureTemplateLabelPlacement(template).center;
+}
+
 function getComponentsOutline(
   components: RoomComponent[],
   offset: Pair,
 ): MultiPolygon {
+  // Avoid near-coincident intersections from pointer-derived fractional coordinates.
   const polygons = components.map((component) => [
-    getComponentRing(component).map(
-      ([x, y]) => [x + offset[0], y + offset[1]] as Pair,
-    ),
+    getComponentRing(component).map(([x, y]) => [
+      Math.round((x + offset[0]) * POLYGON_COORDINATE_SCALE) /
+        POLYGON_COORDINATE_SCALE,
+      Math.round((y + offset[1]) * POLYGON_COORDINATE_SCALE) /
+        POLYGON_COORDINATE_SCALE,
+    ] as Pair),
   ]);
   const [firstPolygon, ...remainingPolygons] = polygons;
 

@@ -4,6 +4,13 @@ import { expect, test } from "@playwright/test";
 test("locked flat keeps furniture editable and saves the room and placements", async ({
   page,
 }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(window, "showSaveFilePicker", {
+      configurable: true,
+      value: undefined,
+    });
+  });
+  page.on("dialog", (dialog) => dialog.accept("custom-layout"));
   await page.goto("/");
   await page.evaluate(() => localStorage.clear());
   await page.reload();
@@ -75,7 +82,12 @@ test("locked flat keeps furniture editable and saves the room and placements", a
   await expect(
     page.getByRole("button", { name: "Add right triangle" }),
   ).toBeVisible();
-  await expect(page.getByRole("button", { name: "Add circle" })).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Add circle" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Add quarter circle" }),
+  ).toHaveCount(0);
   await expect(page.getByLabel("Template Name")).toHaveCount(0);
   await expect(
     page.getByRole("button", { name: "Rotate selected shape clockwise" }),
@@ -147,6 +159,21 @@ test("locked flat keeps furniture editable and saves the room and placements", a
   await expect(page.getByTestId("shape-component")).toHaveCount(1);
   await page.getByRole("button", { name: "Add circle" }).click();
   await expect(page.getByTestId("shape-component")).toHaveCount(2);
+  await expect(page.getByLabel("Radius (cm)")).toHaveValue("420");
+  const includedAngleInput = page.getByLabel("Included angle (degrees)");
+  await expect(includedAngleInput).toHaveValue("90");
+  const initialSectorPath = await page
+    .getByTestId("shape-component")
+    .last()
+    .getAttribute("d");
+  await includedAngleInput.fill("180");
+  await expect(includedAngleInput).toHaveValue("180");
+  await expect(page.getByTestId("shape-component").last()).not.toHaveAttribute(
+    "d",
+    initialSectorPath ?? "",
+  );
+  await includedAngleInput.fill("361");
+  await expect(includedAngleInput).toHaveValue("180");
   await page.getByRole("button", { name: "Remove selected shape" }).click();
   await expect(page.getByTestId("shape-component")).toHaveCount(1);
   await page
@@ -388,11 +415,15 @@ test("locked flat keeps furniture editable and saves the room and placements", a
   await expect(
     page.getByRole("heading", { name: "Sofa", exact: true }),
   ).toBeVisible();
-  await page.getByRole("button", { name: "Save" }).click();
+  await page.getByRole("button", { name: "Save", exact: true }).click();
   await expect(page.getByRole("status")).toContainText("Saved in this browser");
   const downloadPromise = page.waitForEvent("download");
-  await page.getByRole("button", { name: "Export" }).click();
+  await page.getByRole("button", { name: "Save file" }).click();
   const download = await downloadPromise;
+  expect(download.suggestedFilename()).toBe("custom-layout.json");
+  await expect(page.getByRole("status")).toContainText(
+    "Downloaded custom-layout.json",
+  );
   const exportPath = await download.path();
   expect(exportPath).not.toBeNull();
 
@@ -405,6 +436,7 @@ test("locked flat keeps furniture editable and saves the room and placements", a
     mirrorHorizontal: true,
     mirrorVertical: true,
   });
+
   expect(exportedFlat.rooms[0].components[0]).toMatchObject({
     mirrorHorizontal: true,
     mirrorVertical: true,
@@ -472,6 +504,69 @@ test("locked flat keeps furniture editable and saves the room and placements", a
       ),
     )
     .toBe(initialFirstLeft);
+});
+
+test("file save picker writes the flat under the selected filename", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    const windowWithSavePicker = window as Window & {
+      showSaveFilePicker?: (options: {
+        suggestedName: string;
+        types: { description: string; accept: Record<string, string[]> }[];
+      }) => Promise<{
+        name: string;
+        createWritable: () => Promise<{
+          write: (data: string) => Promise<void>;
+          close: () => Promise<void>;
+        }>;
+      }>;
+      savedFile?: { options: unknown; contents: string; closed: boolean };
+    };
+
+    windowWithSavePicker.showSaveFilePicker = async (options) => {
+      const savedFile = { options, contents: "", closed: false };
+      windowWithSavePicker.savedFile = savedFile;
+
+      return {
+        name: "my-layout.json",
+        createWritable: async () => ({
+          write: async (contents) => {
+            savedFile.contents = contents;
+          },
+          close: async () => {
+            savedFile.closed = true;
+          },
+        }),
+      };
+    };
+  });
+  await page.goto("/");
+  await page.evaluate(() => localStorage.clear());
+  await page.reload();
+
+  await page.getByRole("button", { name: "Save file" }).click();
+  await expect(page.getByRole("status")).toContainText("Saved my-layout.json");
+  const savedFile = await page.evaluate(() => {
+    const windowWithSavedFile = window as Window & {
+      savedFile?: { options: unknown; contents: string; closed: boolean };
+    };
+    return windowWithSavedFile.savedFile;
+  });
+  expect(savedFile?.closed).toBe(true);
+  expect(JSON.parse(savedFile?.contents ?? "")).toMatchObject({
+    rooms: [],
+    selectedRoomId: null,
+  });
+  expect(savedFile?.options).toMatchObject({
+    suggestedName: "flat-planner.json",
+    types: [
+      {
+        description: "Flat Planner file",
+        accept: { "application/json": [".json"] },
+      },
+    ],
+  });
 });
 
 test("furniture hit targets and labels follow the rendered shape", async ({
@@ -634,10 +729,28 @@ test("furniture hit targets and labels follow the rendered shape", async ({
     furnitureBox.x + furnitureBox.width * 0.25,
     furnitureBox.y + furnitureBox.height * 0.75,
   );
+  await page.mouse.click(
+    furnitureBox.x + furnitureBox.width * 0.25,
+    furnitureBox.y + furnitureBox.height * 0.75,
+  );
+  await expect(page.getByTestId("room-designer-canvas")).toBeVisible();
+  await expect(page.getByLabel("Room name")).toHaveValue("Test room");
+  await page.getByRole("button", { name: "Back to flat layout" }).click();
+  await expect(furnitureItem).toBeVisible();
+  await expect(furnitureItem).not.toHaveClass(/selectedFurniture/);
+  const flatFurnitureBounds = await furnitureItem.boundingBox();
+  expect(flatFurnitureBounds).not.toBeNull();
+  if (!flatFurnitureBounds) {
+    throw new Error("The triangle placement is not visible in the flat view.");
+  }
+  await page.mouse.move(
+    flatFurnitureBounds.x + flatFurnitureBounds.width * 0.25,
+    flatFurnitureBounds.y + flatFurnitureBounds.height * 0.75,
+  );
   await page.mouse.down();
   await page.mouse.move(
-    furnitureBox.x + furnitureBox.width * 0.25 + 50,
-    furnitureBox.y + furnitureBox.height * 0.75 + 30,
+    flatFurnitureBounds.x + flatFurnitureBounds.width * 0.25 + 50,
+    flatFurnitureBounds.y + flatFurnitureBounds.height * 0.75 + 30,
     { steps: 4 },
   );
   await page.mouse.up();
@@ -703,4 +816,239 @@ test("furniture hit targets and labels follow the rendered shape", async ({
   expect(rectangleLabelBounds.transform).toContain(
     `scale(${labelScale})`,
   );
+});
+
+test("phone layout exposes planner panels and supports canvas gestures", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.addInitScript(() => {
+    Object.defineProperty(crypto, "randomUUID", {
+      configurable: true,
+      value: undefined,
+    });
+  });
+  await page.goto("/");
+  await page.evaluate(() => localStorage.clear());
+  await page.reload();
+
+  const panelNavigation = page.getByRole("navigation", {
+    name: "Planner panels",
+  });
+  await expect(panelNavigation).toBeVisible();
+  await expect(page.locator("main")).toHaveCSS("display", "flex");
+  await expect(panelNavigation).toHaveCSS("display", "grid");
+  await page.getByRole("button", { name: "Rooms", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Rooms" })).toBeVisible();
+  await page.getByRole("button", { name: "Add room" }).click();
+  await expect(page.getByRole("heading", { name: "Room Creator" })).toBeVisible();
+  await page.setViewportSize({ width: 320, height: 568 });
+  await page.getByLabel("Room name").fill("Phone room");
+  for (const label of ["Width (cm)", "Length (cm)"]) {
+    const dimension = page.getByLabel(label);
+    await dimension.focus();
+    await expect
+      .poll(() =>
+        dimension.evaluate(
+          (element) => {
+            const input = element as HTMLInputElement;
+            return (
+              input.selectionStart === 0 &&
+              input.selectionEnd === input.value.length
+            );
+          },
+        ),
+      )
+      .toBe(true);
+  }
+  await page.getByRole("button", { name: "Add right triangle" }).click();
+  await expect(page.getByTestId("shape-component")).toHaveCount(2);
+  const creatorFields = page
+    .getByTestId("shape-composition-work-area")
+    .locator("> div")
+    .first();
+  const shapeActions = page.getByTestId("shape-actions");
+  const creatorCanvas = page.getByTestId("shape-composition-canvas");
+  await creatorFields.evaluate((element) => {
+    element.scrollTop = element.scrollHeight;
+  });
+  const fieldBounds = await creatorFields.boundingBox();
+  const actionBounds = await shapeActions.boundingBox();
+  const creatorCanvasBounds = await creatorCanvas.boundingBox();
+  expect(fieldBounds).not.toBeNull();
+  expect(actionBounds).not.toBeNull();
+  expect(creatorCanvasBounds).not.toBeNull();
+  if (!fieldBounds || !actionBounds || !creatorCanvasBounds) {
+    throw new Error("The mobile creator controls or preview are not visible.");
+  }
+  expect(actionBounds.y).toBeGreaterThanOrEqual(fieldBounds.y);
+  expect(actionBounds.y + actionBounds.height).toBeLessThanOrEqual(
+    fieldBounds.y + fieldBounds.height,
+  );
+  expect(creatorCanvasBounds.y).toBeGreaterThanOrEqual(
+    fieldBounds.y + fieldBounds.height,
+  );
+  await page
+    .getByRole("button", { name: "Rotate selected shape clockwise" })
+    .click();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page
+    .getByTestId("shape-composition-creator")
+    .getByRole("button", { name: "Save" })
+    .click();
+
+  const hasHorizontalOverflow = () =>
+    page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
+  expect(await hasHorizontalOverflow()).toBe(false);
+  await expect(page.getByTestId("floor-plan-canvas")).toBeVisible();
+
+  const floorPlanCanvas = page.getByTestId("floor-plan-canvas");
+  const floorPlanContents = page.getByTestId("floor-plan-contents");
+  const transformBeforePan = await floorPlanContents.evaluate(
+    (element) => element.style.transform,
+  );
+  await floorPlanCanvas.evaluate((canvas) => {
+    const rect = canvas.getBoundingClientRect();
+    const dispatch = (type: string, clientX: number, clientY: number) => {
+      canvas.dispatchEvent(
+        new PointerEvent(type, {
+          bubbles: true,
+          cancelable: true,
+          pointerId: 1,
+          pointerType: "touch",
+          clientX,
+          clientY,
+          isPrimary: true,
+        }),
+      );
+    };
+
+    dispatch("pointerdown", rect.left + 20, rect.top + 20);
+    dispatch("pointermove", rect.left + 50, rect.top + 35);
+    dispatch("pointerup", rect.left + 50, rect.top + 35);
+  });
+  const transformAfterPan = await floorPlanContents.evaluate(
+    (element) => element.style.transform,
+  );
+  expect(transformAfterPan).not.toBe(transformBeforePan);
+
+  const scaleBeforePinch = await page
+    .getByTestId("floor-plan-contents")
+    .evaluate((element) => {
+      const match = element.style.transform.match(/scale\(([^)]+)\)/);
+      return match ? Number(match[1]) : 0;
+    });
+
+  await floorPlanCanvas.evaluate((canvas) => {
+    const rect = canvas.getBoundingClientRect();
+    const dispatch = (
+      type: string,
+      pointerId: number,
+      clientX: number,
+      clientY: number,
+    ) => {
+      canvas.dispatchEvent(
+        new PointerEvent(type, {
+          bubbles: true,
+          cancelable: true,
+          pointerId,
+          pointerType: "touch",
+          clientX,
+          clientY,
+          isPrimary: pointerId === 1,
+        }),
+      );
+    };
+
+    dispatch("pointerdown", 1, rect.left + 20, rect.top + 20);
+    dispatch("pointermove", 1, rect.left + 50, rect.top + 35);
+    dispatch("pointerup", 1, rect.left + 50, rect.top + 35);
+    dispatch("pointerdown", 2, rect.left + 20, rect.top + 20);
+    dispatch("pointerdown", 3, rect.left + 70, rect.top + 20);
+    dispatch("pointermove", 3, rect.left + 120, rect.top + 20);
+    dispatch("pointerup", 3, rect.left + 120, rect.top + 20);
+    dispatch("pointerup", 2, rect.left + 20, rect.top + 20);
+  });
+
+  const scaleAfterPinch = await page
+    .getByTestId("floor-plan-contents")
+    .evaluate((element) => {
+      const match = element.style.transform.match(/scale\(([^)]+)\)/);
+      return match ? Number(match[1]) : 0;
+    });
+  expect(scaleAfterPinch).toBeGreaterThan(scaleBeforePinch);
+
+  await page.getByRole("button", { name: "Rooms", exact: true }).click();
+  await page.getByRole("button", { name: "Phone room", exact: true }).click();
+  await expect(page.getByTestId("room-designer-canvas")).toBeVisible();
+  expect(await hasHorizontalOverflow()).toBe(false);
+  await page.getByRole("button", { name: "Details", exact: true }).click();
+  await page.getByRole("button", { name: "Add door" }).click();
+  await page.getByRole("button", { name: "Door", exact: true }).click();
+  for (const label of ["Width (cm)", "Offset (cm)"]) {
+    const dimension = page.getByLabel(label).last();
+    await dimension.focus();
+    await expect
+      .poll(() =>
+        dimension.evaluate((element) => {
+          const input = element as HTMLInputElement;
+          return (
+            input.selectionStart === 0 &&
+            input.selectionEnd === input.value.length
+          );
+        }),
+      )
+      .toBe(true);
+  }
+  await page.getByRole("button", { name: "Add window" }).click();
+  await page.getByRole("button", { name: "Window", exact: true }).click();
+  const windowWidth = page.getByLabel("Width (cm)").last();
+  await windowWidth.focus();
+  await expect
+    .poll(() =>
+      windowWidth.evaluate((element) => {
+        const input = element as HTMLInputElement;
+        return input.selectionStart === 0 && input.selectionEnd === input.value.length;
+      }),
+    )
+    .toBe(true);
+
+  await page.getByRole("button", { name: "Plan", exact: true }).click();
+  await page.getByRole("button", { name: "Create furniture template" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Furniture Creator" }),
+  ).toBeVisible();
+  expect(await hasHorizontalOverflow()).toBe(false);
+
+  await page.getByLabel("Template Name").fill("Phone chair");
+  await page
+    .getByTestId("shape-composition-creator")
+    .getByRole("button", { name: "Save" })
+    .click();
+  await page.getByRole("button", { name: "Rooms", exact: true }).click();
+  await page.getByRole("button", { name: "Phone room", exact: true }).click();
+  await page.getByRole("button", {
+    name: "Phone chair — 100 × 60 cm",
+  }).click();
+
+  await page.getByRole("button", { name: "Details", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Room details" })).toBeVisible();
+  await page
+    .getByRole("button", { name: "Phone chair 1", exact: true })
+    .click();
+  for (const label of ["Width (cm)", "Length (cm)", "Rotation (degrees)"]) {
+    const dimension = page.getByLabel(label).last();
+    await dimension.focus();
+    await expect
+      .poll(() =>
+        dimension.evaluate((element) => {
+          const input = element as HTMLInputElement;
+          return (
+            input.selectionStart === 0 &&
+            input.selectionEnd === input.value.length
+          );
+        }),
+      )
+      .toBe(true);
+  }
 });

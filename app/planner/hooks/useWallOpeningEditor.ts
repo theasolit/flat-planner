@@ -7,6 +7,7 @@ import {
   findOpeningSlot as findAvailableOpeningSlot,
 } from "../geometry/openingGeometry";
 import type { Room, WallOpening } from "../types";
+import { createId } from "../utils/createId";
 
 type Props = {
   rooms: Room[];
@@ -92,7 +93,7 @@ export function useWallOpeningEditor({
     }
 
     const opening = {
-      id: crypto.randomUUID(),
+      id: createId(),
       sourceId: slot.sourceId,
       offset: slot.slot.offset,
       width: slot.slot.width,

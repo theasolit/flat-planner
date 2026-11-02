@@ -151,3 +151,48 @@
     min-height: 36px;
     align-content: start;
 }
+
+@media (max-width: 760px) {
+    .creatorHeader {
+        width: 100%;
+        gap: 8px;
+    }
+
+    .creatorHeader .creatorTitle {
+        min-width: 0;
+        flex: 1;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .creatorHeader .creatorTitle + button {
+        flex: 0 0 auto;
+        margin-left: 0;
+    }
+
+    .creatorFields {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+        padding-top: 48px;
+    }
+
+    .creatorFields > label:first-child,
+    .creatorFields > .shapePicker,
+    .creatorFields > .shapeActions,
+    .creatorFields > p {
+        grid-column: 1 / -1;
+    }
+
+    .shapeActions {
+        gap: 6px;
+    }
+
+    .shapeActionButton {
+        min-height: 42px;
+    }
+
+    .shapePickerButton {
+        min-height: 42px;
+    }
+}

@@ -6,16 +6,18 @@ Open the app at [the Flat Planner website](https://theasolit.github.io/flat-plan
 
 ## Using the planner
 
-1. **Create rooms.** Use **Add room**, give the room a name and dimensions, then build its outline from rectangles, right triangles, and circles. Shapes can be rotated, mirrored, and removed while editing.
+1. **Create rooms.** Use **Add room**, give the room a name and dimensions, then build its outline from rectangles, right triangles, and circular sectors. Set each sector's radius and included angle. Shapes can be rotated, mirrored, and removed while editing.
 2. **Arrange the floor plan.** Select a room to edit its details and position it in the overall plan. Add doors and windows to room walls, adjust wall thickness, and use the zoom controls or **Fit to view** to navigate the plan.
 3. **Try furniture layouts.** In a room, create furniture templates and add them to the plan. Arrange placements in the room and lock individual pieces when you want to keep them in place.
-4. **Save or transfer your plan.** Select **Save** to store the current plan in this browser. Use **Export** to download a JSON copy, or **Import** to load a previously exported plan.
+4. **Save or transfer your plan.** Select **Save** to store the current plan in this browser. Use **Save file** to choose a filename and save location for a JSON copy, or **Import** to load a previously saved plan.
 
 You can lock the flat to protect its room layout while continuing to work with furniture. Unlock it when you need to make structural edits again.
 
+On a phone, use the **Plan**, **Rooms**, and **Details** tabs to switch between the canvas and its controls. Drag an empty part of the canvas to pan, pinch to zoom, or use the on-screen zoom controls. Room, furniture, and opening elements remain directly draggable.
+
 ## Data and storage
 
-Plans are stored in the browser's local storage when you select **Save**. They are not synchronized between browsers or devices. Export a JSON file if you want a portable backup or need to move a plan to another browser.
+Plans are stored in the browser's local storage when you select **Save**. They are not synchronized between browsers or devices. Use **Save file** to create a portable JSON backup or move a plan to another browser. Browsers without a native save-file picker download the file using the chosen name to their configured downloads location.
 
 ## Run locally
 

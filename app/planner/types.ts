@@ -35,12 +35,13 @@ export type Flat = {
 
 export type RoomComponent = {
   id: string;
-  shape: "rectangle" | "right-triangle" | "circle";
+  shape: "rectangle" | "right-triangle" | "circle" | "quarter-circle";
   x: number;
   y: number;
   width: number;
   length: number;
   rotation: number;
+  includedAngle?: number;
   mirrorHorizontal?: boolean;
   mirrorVertical?: boolean;
 };

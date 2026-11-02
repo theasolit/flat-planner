@@ -458,6 +458,47 @@ describe("room geometry", () => {
     expect(getStraightRoomBoundaryEdges(room)).toHaveLength(0);
   });
 
+  it("creates a quarter-circle with a curved edge and two straight edges", () => {
+    const component: RoomComponent = {
+      id: "quarter-circle",
+      shape: "quarter-circle",
+      x: 0,
+      y: 0,
+      width: 300,
+      length: 300,
+      rotation: 0,
+    };
+    const room = makeRoom([component]);
+
+    expect(getComponentRing(component)).toHaveLength(34);
+    expect(getRoomArea(room) / ((Math.PI * 300 ** 2) / 4)).toBeGreaterThan(
+      0.999,
+    );
+    expect(getRoomBoundaryEdges(room)).toHaveLength(34);
+    expect(getStraightRoomBoundaryEdges(room)).toHaveLength(2);
+  });
+
+  it("uses radius and included angle to create a circular sector", () => {
+    const component: RoomComponent = {
+      id: "sector",
+      shape: "circle",
+      x: 0,
+      y: 0,
+      width: 300,
+      length: 300,
+      includedAngle: 90,
+      rotation: 0,
+    };
+    const room = makeRoom([component]);
+    const ring = getComponentRing(component);
+
+    expect(ring).toHaveLength(18);
+    expect(getRoomArea(room) / ((Math.PI * 300 ** 2) / 4)).toBeGreaterThan(
+      0.99,
+    );
+    expect(getStraightRoomBoundaryEdges(room)).toHaveLength(2);
+  });
+
   it("migrates a legacy side opening to its rectangle edge", () => {
     const room = makeRoom([
       {

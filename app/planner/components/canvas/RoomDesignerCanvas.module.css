@@ -9,6 +9,7 @@
     height: auto;
     min-height: 0;
     overflow: hidden;
+    touch-action: none;
 }
 
 .canvasBackButton {

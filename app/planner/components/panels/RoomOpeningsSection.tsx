@@ -171,10 +171,11 @@ export default function RoomOpeningsSection({
                     Width (cm)
                     <input
                       className={styles.dimensionInput}
-                      type="number"
-                      min="1"
+                      type="text"
+                      inputMode="decimal"
                       disabled={isFlatLocked}
                       value={opening.width}
+                      onFocus={(event) => event.currentTarget.select()}
                       onChange={(event) =>
                         updateWallOpening(
                           opening.id,
@@ -189,9 +190,11 @@ export default function RoomOpeningsSection({
                     Offset (cm)
                     <input
                       className={styles.dimensionInput}
-                      type="number"
+                      type="text"
+                      inputMode="decimal"
                       disabled={isFlatLocked}
                       value={opening.offset}
+                      onFocus={(event) => event.currentTarget.select()}
                       onChange={(event) =>
                         updateWallOpening(
                           opening.id,

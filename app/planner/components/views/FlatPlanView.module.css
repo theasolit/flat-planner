@@ -10,19 +10,12 @@
     margin-bottom: 16px;
 }
 
-.zoomControls {
-    display: flex;
-    gap: 8px;
-    margin-bottom: 16px;
-}
+@media (max-width: 760px) {
+    .floorPlanToolbar {
+        gap: 8px;
+    }
 
-.zoomButton {
-    min-width: 36px;
-    padding: 6px 10px;
-    border: 1px solid var(--app-border);
-    border-radius: 6px;
-    background-color: var(--app-surface);
-    color: var(--app-text);
-    font: inherit;
-    cursor: pointer;
+    .floorPlanTitle {
+        margin-bottom: 8px;
+    }
 }

@@ -3,6 +3,7 @@ import sharedStyles from "../../FlatPlanner.module.css";
 import styles from "./RoomListPanel.module.css";
 
 type Props = {
+  className?: string;
   rooms: Room[];
   selectedRoomId: number | null;
   isFlatLocked: boolean;
@@ -13,6 +14,7 @@ type Props = {
 };
 
 export default function RoomListPanel({
+  className,
   rooms,
   selectedRoomId,
   isFlatLocked,
@@ -22,7 +24,7 @@ export default function RoomListPanel({
   onRemoveRoom,
 }: Props) {
   return (
-    <aside className={sharedStyles.roomPanel}>
+    <aside className={`${sharedStyles.roomPanel} ${className ?? ""}`}>
       <div className={`${sharedStyles.doorwayHeader} ${sharedStyles.roomListHeader}`}>
         <h2 className={sharedStyles.panelTitle}>Rooms</h2>
         <div className={styles.roomHeaderActions}>

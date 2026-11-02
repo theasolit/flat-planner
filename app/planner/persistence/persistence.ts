@@ -23,7 +23,8 @@ function isRoomComponent(value: unknown): value is RoomComponent {
     typeof value.id === "string" &&
     (value.shape === "rectangle" ||
       value.shape === "right-triangle" ||
-      value.shape === "circle") &&
+      value.shape === "circle" ||
+      value.shape === "quarter-circle") &&
     isFiniteNumber(value.x) &&
     isFiniteNumber(value.y) &&
     isFiniteNumber(value.width) &&
@@ -31,6 +32,10 @@ function isRoomComponent(value: unknown): value is RoomComponent {
     isFiniteNumber(value.length) &&
     value.length > 0 &&
     isFiniteNumber(value.rotation) &&
+    (value.includedAngle === undefined ||
+      (isFiniteNumber(value.includedAngle) &&
+        value.includedAngle > 0 &&
+        value.includedAngle <= 360)) &&
     (value.mirrorHorizontal === undefined ||
       typeof value.mirrorHorizontal === "boolean") &&
     (value.mirrorVertical === undefined ||
@@ -62,7 +67,8 @@ function isFurnitureTemplate(value: unknown): value is FurnitureTemplate {
     typeof value.name === "string" &&
     (value.shape === "rectangle" ||
       value.shape === "right-triangle" ||
-      value.shape === "circle") &&
+      value.shape === "circle" ||
+      value.shape === "quarter-circle") &&
     isFiniteNumber(value.width) &&
     value.width > 0 &&
     isFiniteNumber(value.length) &&
@@ -178,7 +184,77 @@ export function saveFlatData(flat: Flat): void {
   localStorage.setItem(STORAGE_KEY, serializeFlatData(flat));
 }
 
-export function downloadFlatData(flat: Flat): void {
+type SaveFilePickerOptions = {
+  suggestedName: string;
+  types: {
+    description: string;
+    accept: Record<string, string[]>;
+  }[];
+};
+
+type WritableFile = {
+  write: (data: string) => Promise<void>;
+  close: () => Promise<void>;
+};
+
+type SaveFileHandle = {
+  name: string;
+  createWritable: () => Promise<WritableFile>;
+};
+
+type SaveFilePicker = (
+  options: SaveFilePickerOptions,
+) => Promise<SaveFileHandle>;
+
+export async function saveFlatFile(
+  flat: Flat,
+): Promise<{ fileName: string; destination: "chosen" | "downloads" } | null> {
+  const picker = (
+    window as Window & { showSaveFilePicker?: SaveFilePicker }
+  ).showSaveFilePicker;
+
+  if (picker) {
+    const fileHandle = await picker({
+      suggestedName: "flat-planner.json",
+      types: [
+        {
+          description: "Flat Planner file",
+          accept: { "application/json": [".json"] },
+        },
+      ],
+    });
+    const writable = await fileHandle.createWritable();
+
+    await writable.write(serializeFlatData(flat, true));
+    await writable.close();
+
+    return { fileName: fileHandle.name, destination: "chosen" };
+  }
+
+  const requestedName = window.prompt(
+    "File name",
+    "flat-planner.json",
+  );
+
+  if (requestedName === null) {
+    return null;
+  }
+
+  const trimmedName = requestedName.trim();
+  const fileName = trimmedName
+    ? /\.json$/i.test(trimmedName)
+      ? trimmedName
+      : `${trimmedName}.json`
+    : "flat-planner.json";
+
+  downloadFlatData(flat, fileName);
+  return { fileName, destination: "downloads" };
+}
+
+export function downloadFlatData(
+  flat: Flat,
+  fileName = "flat-planner.json",
+): void {
   const file = new Blob([serializeFlatData(flat, true)], {
     type: "application/json",
   });
@@ -186,7 +262,7 @@ export function downloadFlatData(flat: Flat): void {
   const link = document.createElement("a");
 
   link.href = downloadUrl;
-  link.download = "flat-planner.json";
+  link.download = fileName;
   document.body.append(link);
   link.click();
   link.remove();

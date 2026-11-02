@@ -19,8 +19,14 @@ export function getRoomComponents(room: Room): RoomComponent[] {
 }
 
 export function getComponentRing(component: RoomComponent): Pair[] {
-  const centerX = component.x + component.width / 2;
-  const centerY = component.y + component.length / 2;
+  const isCircleSector =
+    component.shape === "circle" && component.includedAngle !== undefined;
+  const centerX = isCircleSector
+    ? component.x
+    : component.x + component.width / 2;
+  const centerY = isCircleSector
+    ? component.y
+    : component.y + component.length / 2;
 
   let points: Pair[];
 
@@ -36,6 +42,35 @@ export function getComponentRing(component: RoomComponent): Pair[] {
       [component.x, component.y + component.length],
       [component.x + component.width, component.y + component.length],
       [component.x, component.y],
+    ];
+  } else if (isCircleSector) {
+    const includedAngle = component.includedAngle ?? 360;
+    const segments = Math.max(1, Math.ceil((includedAngle / 360) * 64));
+
+    points = [
+      [centerX, centerY],
+      ...Array.from({ length: segments + 1 }, (_, index) => {
+        const angle = ((index / segments) * includedAngle * Math.PI) / 180;
+
+        return [
+          centerX + component.width * Math.cos(angle),
+          centerY + component.width * Math.sin(angle),
+        ] as Pair;
+      }),
+    ];
+  } else if (component.shape === "quarter-circle") {
+    const segments = 32;
+
+    points = [
+      [component.x, component.y],
+      ...Array.from({ length: segments + 1 }, (_, index) => {
+        const angle = (index / segments) * (Math.PI / 2);
+
+        return [
+          component.x + component.width * Math.cos(angle),
+          component.y + component.length * Math.sin(angle),
+        ] as Pair;
+      }),
     ];
   } else {
     const segments = 64;
@@ -478,13 +513,26 @@ function isCircularApproximationEdge(
   room: Room,
 ): boolean {
   return room.components
-    .filter((component) => component.shape === "circle")
+    .filter(
+      (component) =>
+        component.shape === "circle" ||
+        component.shape === "quarter-circle",
+    )
     .some((component) => {
       const ring = getComponentRing(component).map(
         ([x, y]): Pair => [x + room.x, y + room.y],
       );
 
       return ring.some((start, index) => {
+        if (
+          (component.shape === "quarter-circle" ||
+            (component.shape === "circle" &&
+              component.includedAngle !== undefined)) &&
+          (index === 0 || index === ring.length - 1)
+        ) {
+          return false;
+        }
+
         const next = ring[(index + 1) % ring.length];
 
         if (!next) {

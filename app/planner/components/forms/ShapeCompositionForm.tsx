@@ -7,6 +7,7 @@ import {
 } from "../../geometry/geometry";
 import { snapShapePosition, type ShapeBounds } from "../../geometry/shapeSnapping";
 import ShapeCompositionCanvas from "../canvas/ShapeCompositionCanvas";
+import { createId } from "../../utils/createId";
 import type { Pair, RoomComponent } from "../../types";
 
 export function ShapeCompositionForm({
@@ -106,24 +107,35 @@ export function ShapeCompositionForm({
   function addShape(componentShape: RoomComponent["shape"]) {
     const widthToAdd = selectedComponent?.width ?? shapeWidth;
     const lengthToAdd = selectedComponent?.length ?? shapeLength;
+    const includedAngle =
+      selectedComponent?.shape === "circle"
+        ? selectedComponent.includedAngle ?? 360
+        : 90;
 
     if (
       !Number.isFinite(widthToAdd) ||
       !Number.isFinite(lengthToAdd) ||
       widthToAdd <= 0 ||
-      lengthToAdd <= 0
+      lengthToAdd <= 0 ||
+      !Number.isFinite(includedAngle) ||
+      includedAngle <= 0 ||
+      includedAngle > 360
     ) {
       return;
     }
 
     const nextComponent: RoomComponent = {
-      id: crypto.randomUUID(),
+      id: createId(),
       shape: componentShape,
       x: maxX,
       y: minY,
       width: widthToAdd,
-      length: componentShape === "circle" ? widthToAdd : lengthToAdd,
+      length:
+        componentShape === "circle" || componentShape === "quarter-circle"
+          ? widthToAdd
+          : lengthToAdd,
       rotation: 0,
+      ...(componentShape === "circle" ? { includedAngle } : {}),
     };
 
     setComponents((current) => [...current, nextComponent]);
@@ -139,22 +151,44 @@ export function ShapeCompositionForm({
     }
 
     setComponents((current) =>
-      current.map((component) =>
-        component.id === selectedComponent.id
-          ? component.shape === "circle"
+      current.map((component) => {
+        if (component.id !== selectedComponent.id) {
+          return component;
+        }
+
+        if (component.shape === "circle") {
+          return field === "width"
             ? { ...component, width: value, length: value }
-            : { ...component, [field]: value }
-          : component,
-      ),
+            : { ...component, includedAngle: value };
+        }
+
+        if (component.shape === "quarter-circle") {
+          return { ...component, width: value, length: value };
+        }
+
+        return { ...component, [field]: value };
+      }),
     );
   }
 
   function updateShapeDimension(field: "width" | "length", value: number) {
-    if (!Number.isFinite(value) || value <= 0) {
+    if (
+      !Number.isFinite(value) ||
+      value <= 0 ||
+      (field === "length" &&
+        selectedComponent?.shape === "circle" &&
+        value > 360)
+    ) {
       return;
     }
 
     if (selectedComponent?.shape === "circle") {
+      if (field === "width") {
+        setShapeWidth(value);
+      } else {
+        setShapeLength(value);
+      }
+    } else if (selectedComponent?.shape === "quarter-circle") {
       setShapeWidth(value);
       setShapeLength(value);
     } else if (field === "width") {
@@ -399,8 +433,7 @@ export function ShapeCompositionForm({
                 )}
                 {value === "circle" && (
                   <svg viewBox="0 0 24 24" aria-hidden="true">
-                    <circle cx="12" cy="12" r="8" />
-                    <path d="M12 9v6M9 12h6" />
+                    <path d="M5 19V5h14a14 14 0 0 1-14 14Z" />
                   </svg>
                 )}
               </button>
@@ -410,12 +443,15 @@ export function ShapeCompositionForm({
           <label
             className={`${sharedStyles.dimensionField} ${styles.stableField}`}
           >
-            Width (cm)
+            {selectedComponent?.shape === "circle"
+              ? "Radius (cm)"
+              : "Width (cm)"}
             <input
               className={sharedStyles.dimensionInput}
-              type="number"
-              min="1"
+              type="text"
+              inputMode="decimal"
               value={selectedComponent?.width ?? shapeWidth}
+              onFocus={(event) => event.currentTarget.select()}
               onChange={(event) =>
                 updateShapeDimension("width", Number(event.target.value))
               }
@@ -425,12 +461,19 @@ export function ShapeCompositionForm({
           <label
             className={`${sharedStyles.dimensionField} ${styles.stableField}`}
           >
-            Length (cm)
+            {selectedComponent?.shape === "circle"
+              ? "Included angle (degrees)"
+              : "Length (cm)"}
             <input
               className={sharedStyles.dimensionInput}
-              type="number"
-              min="1"
-              value={selectedComponent?.length ?? shapeLength}
+              type="text"
+              inputMode="decimal"
+              value={
+                selectedComponent?.shape === "circle"
+                  ? selectedComponent.includedAngle ?? 360
+                  : selectedComponent?.length ?? shapeLength
+              }
+              onFocus={(event) => event.currentTarget.select()}
               onChange={(event) =>
                 updateShapeDimension("length", Number(event.target.value))
               }

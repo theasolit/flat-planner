@@ -10,3 +10,9 @@
 .templatePicker .templateList {
     margin-top: 12px;
 }
+
+@media (max-width: 760px) {
+    .templatePicker {
+        padding: 12px;
+    }
+}

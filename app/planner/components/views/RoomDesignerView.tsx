@@ -3,6 +3,7 @@ import sharedStyles from "../../FlatPlanner.module.css";
 import styles from "./RoomDesignerView.module.css";
 import { FurnitureTemplatePicker } from "../forms/FurnitureTemplatePicker";
 import RoomDesignerCanvas from "../canvas/RoomDesignerCanvas";
+import type { CanvasNavigation } from "../../hooks/useCanvasNavigation";
 import type {
   FurnitureTemplate,
   Room,
@@ -10,12 +11,18 @@ import type {
 
 type CanvasProps = Omit<
   ComponentProps<typeof RoomDesignerCanvas>,
-  "selectedRoom" | "onCanvasClick" | "onBack"
+  "selectedRoom" | "onCanvasClick" | "onBack" | "navigation"
 >;
 
 type Props = {
   selectedRoom: Room | undefined;
   canvasProps: CanvasProps | null;
+  navigation: CanvasNavigation;
+  canFit: boolean;
+  canResetZoom: boolean;
+  onZoomOut: () => void;
+  onZoomIn: () => void;
+  onFitToView: () => void;
   templates: FurnitureTemplate[];
   onBack: () => void;
   onAddFurniture: ComponentProps<typeof FurnitureTemplatePicker>["onAddFurniture"];
@@ -27,6 +34,12 @@ type Props = {
 export default function RoomDesignerView({
   selectedRoom,
   canvasProps,
+  navigation,
+  canFit,
+  canResetZoom,
+  onZoomOut,
+  onZoomIn,
+  onFitToView,
   templates,
   onBack,
   onAddFurniture,
@@ -36,14 +49,47 @@ export default function RoomDesignerView({
 }: Props) {
   return (
     <div className={styles.roomDesigner}>
-      <h2 className={sharedStyles.workspaceTitle}>
-        {selectedRoom?.name ?? "Room Designer"}
-      </h2>
+      <div className={styles.roomDesignerToolbar}>
+        <h2 className={`${sharedStyles.workspaceTitle} ${styles.roomDesignerTitle}`}>
+          {selectedRoom?.name ?? "Room Designer"}
+        </h2>
+        <div className={sharedStyles.zoomControls}>
+          <button
+            className={sharedStyles.zoomButton}
+            type="button"
+            onClick={onZoomOut}
+            disabled={!canFit}
+            aria-label="Zoom out"
+            title="Zoom out"
+          >
+            −
+          </button>
+          <button
+            className={sharedStyles.zoomButton}
+            type="button"
+            onClick={onZoomIn}
+            disabled={!canFit}
+            aria-label="Zoom in"
+            title="Zoom in"
+          >
+            +
+          </button>
+          <button
+            className={sharedStyles.zoomButton}
+            type="button"
+            onClick={onFitToView}
+            disabled={!canResetZoom}
+          >
+            Fit to view
+          </button>
+        </div>
+      </div>
 
       {selectedRoom && canvasProps ? (
         <div className={styles.roomDesignerContent}>
           <RoomDesignerCanvas
             {...canvasProps}
+            navigation={navigation}
             selectedRoom={selectedRoom}
             onCanvasClick={onCanvasClick}
             onBack={onBack}

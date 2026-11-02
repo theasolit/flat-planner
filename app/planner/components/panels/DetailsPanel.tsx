@@ -13,6 +13,7 @@ import type {
 import RoomOpeningsSection from "./RoomOpeningsSection";
 
 type Props = {
+  className?: string;
   editorMode: EditorMode;
   isFlatLocked: boolean;
   furniturePlacements: FurniturePlacement[];
@@ -59,6 +60,7 @@ type Props = {
 };
 
 export default function DetailsPanel({
+  className,
   editorMode,
   isFlatLocked,
   furniturePlacements,
@@ -95,7 +97,7 @@ export default function DetailsPanel({
 }: Props) {
   return (
     <>
-    <aside className={sharedStyles.detailsPanel}>
+    <aside className={`${sharedStyles.detailsPanel} ${className ?? ""}`}>
       {(editorMode !== "flat" || selectedWall) && (
         <>
           <h2 className={sharedStyles.panelTitle}>Room details</h2>
@@ -329,33 +331,34 @@ export default function DetailsPanel({
               Width (cm)
               <input
                 className={sharedStyles.dimensionInput}
-                type="number"
-                min="1"
-                max={selectedRoom?.width}
+                type="text"
+                inputMode="decimal"
                 disabled={selectedFurniturePlacement.locked}
                 value={
                   selectedFurniturePlacement.width ??
                   selectedFurnitureTemplate.width
                 }
+                onFocus={(event) => event.currentTarget.select()}
                 onChange={(event) =>
                   updateSelectedFurniture("width", Number(event.target.value))
                 }
               />
             </label>
 
-            {selectedFurnitureTemplate.shape !== "circle" && (
+            {selectedFurnitureTemplate.shape !== "circle" &&
+              selectedFurnitureTemplate.shape !== "quarter-circle" && (
               <label className={sharedStyles.dimensionField}>
                 Length (cm)
                 <input
                   className={sharedStyles.dimensionInput}
-                  type="number"
-                  min="1"
-                  max={selectedRoom?.length}
+                  type="text"
+                  inputMode="decimal"
                   disabled={selectedFurniturePlacement.locked}
                   value={
                     selectedFurniturePlacement.length ??
                     selectedFurnitureTemplate.length
                   }
+                  onFocus={(event) => event.currentTarget.select()}
                   onChange={(event) =>
                     updateSelectedFurniture("length", Number(event.target.value))
                   }
@@ -367,11 +370,11 @@ export default function DetailsPanel({
               Rotation (degrees)
               <input
                 className={sharedStyles.dimensionInput}
-                type="number"
-                min="0"
-                max="359"
+                type="text"
+                inputMode="decimal"
                 disabled={selectedFurniturePlacement.locked}
                 value={selectedFurniturePlacement.rotation}
+                onFocus={(event) => event.currentTarget.select()}
                 onChange={(event) =>
                   updateSelectedFurniture("rotation", Number(event.target.value))
                 }

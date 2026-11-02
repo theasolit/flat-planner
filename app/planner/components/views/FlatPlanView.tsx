@@ -3,10 +3,11 @@ import sharedStyles from "../../FlatPlanner.module.css";
 import styles from "./FlatPlanView.module.css";
 import FloorPlanCanvas from "../canvas/FloorPlanCanvas";
 import type { PlanBounds } from "../../types";
+import type { CanvasNavigation } from "../../hooks/useCanvasNavigation";
 
 type CanvasProps = Omit<
   ComponentProps<typeof FloorPlanCanvas>,
-  "canvasRef" | "canvasSize" | "bounds" | "scale"
+  "canvasRef" | "canvasSize" | "bounds" | "scale" | "navigation"
 >;
 
 type Props = {
@@ -14,6 +15,7 @@ type Props = {
   canvasSize: { width: number; height: number };
   bounds: PlanBounds | null;
   scale: number;
+  navigation: CanvasNavigation;
   canFit: boolean;
   canResetZoom: boolean;
   onZoomOut: () => void;
@@ -27,6 +29,7 @@ export default function FlatPlanView({
   canvasSize,
   bounds,
   scale,
+  navigation,
   canFit,
   canResetZoom,
   onZoomOut,
@@ -40,9 +43,9 @@ export default function FlatPlanView({
         <h2 className={`${sharedStyles.workspaceTitle} ${styles.floorPlanTitle}`}>
           Floor plan
         </h2>
-        <div className={styles.zoomControls}>
+        <div className={sharedStyles.zoomControls}>
           <button
-            className={styles.zoomButton}
+            className={sharedStyles.zoomButton}
             type="button"
             onClick={onZoomOut}
             disabled={!canFit}
@@ -52,7 +55,7 @@ export default function FlatPlanView({
             −
           </button>
           <button
-            className={styles.zoomButton}
+            className={sharedStyles.zoomButton}
             type="button"
             onClick={onZoomIn}
             disabled={!canFit}
@@ -62,7 +65,7 @@ export default function FlatPlanView({
             +
           </button>
           <button
-            className={styles.zoomButton}
+            className={sharedStyles.zoomButton}
             type="button"
             onClick={onFitToView}
             disabled={!canResetZoom}
@@ -76,6 +79,7 @@ export default function FlatPlanView({
         canvasSize={canvasSize}
         bounds={bounds}
         scale={scale}
+        navigation={navigation}
         {...canvasProps}
       />
     </>

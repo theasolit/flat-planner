@@ -47,6 +47,75 @@ describe("flat import validation", () => {
     expect(parseFlatData(JSON.stringify(validFlat))).toEqual(validFlat);
   });
 
+  it("accepts quarter-circle room components and furniture templates", () => {
+    const flat: Flat = {
+      ...validFlat,
+      rooms: [
+        {
+          ...validFlat.rooms[0]!,
+          components: [
+            {
+              id: "quarter-circle-room",
+              shape: "quarter-circle",
+              x: 0,
+              y: 0,
+              width: 300,
+              length: 300,
+              rotation: 0,
+            },
+          ],
+        },
+      ],
+      furnitureTemplates: [
+        {
+          id: "quarter-circle-template",
+          name: "Quarter circle",
+          shape: "quarter-circle",
+          width: 100,
+          length: 100,
+          components: [
+            {
+              id: "quarter-circle-furniture",
+              shape: "quarter-circle",
+              x: 0,
+              y: 0,
+              width: 100,
+              length: 100,
+              rotation: 0,
+            },
+          ],
+        },
+      ],
+    };
+
+    expect(parseFlatData(serializeFlatData(flat))).toEqual(flat);
+  });
+
+  it("preserves circle sector included angles", () => {
+    const flat: Flat = {
+      ...validFlat,
+      rooms: [
+        {
+          ...validFlat.rooms[0]!,
+          components: [
+            {
+              id: "sector-room",
+              shape: "circle",
+              x: 0,
+              y: 0,
+              width: 300,
+              length: 300,
+              includedAngle: 135,
+              rotation: 0,
+            },
+          ],
+        },
+      ],
+    };
+
+    expect(parseFlatData(serializeFlatData(flat))).toEqual(flat);
+  });
+
   it("accepts older flat saves without optional collections", () => {
     const legacyFlat = {
       rooms: validFlat.rooms,

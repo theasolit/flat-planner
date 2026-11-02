@@ -10,9 +10,10 @@ const nextConfig: NextConfig = {
   trailingSlash: isGitHubPagesBuild,
   cacheComponents: !isGitHubPagesBuild,
   partialPrefetching: !isGitHubPagesBuild,
+  allowedDevOrigins: ["192.168.178.69"],
   turbopack: {
     rules: {
-      "globals.css": {
+      "**/globals.css": {
         loaders: ["@tailwindcss/turbopack"],
         as: "*.css",
       },

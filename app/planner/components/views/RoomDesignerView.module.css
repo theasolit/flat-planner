@@ -5,10 +5,42 @@
     flex-direction: column;
 }
 
+.roomDesignerToolbar {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.roomDesignerTitle {
+    min-width: 0;
+    margin-bottom: 16px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 .roomDesignerContent {
     display: grid;
     flex: 1;
     min-height: 0;
     grid-template-columns: minmax(0, 1fr) 280px;
     gap: 16px;
+}
+
+@media (max-width: 760px) {
+    .roomDesignerToolbar {
+        gap: 8px;
+    }
+
+    .roomDesignerTitle {
+        margin-bottom: 8px;
+    }
+
+    .roomDesignerContent {
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-rows: minmax(0, 1fr) minmax(140px, min(30dvh, 220px));
+        gap: 8px;
+    }
 }

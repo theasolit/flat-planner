@@ -23,10 +23,11 @@ import { useRoomEditor } from "./hooks/useRoomEditor";
 import { useRoomDrag } from "./hooks/useRoomDrag";
 import { useWallThicknessEditor } from "./hooks/useWallThicknessEditor";
 import { useWallOpeningEditor } from "./hooks/useWallOpeningEditor";
+import { useCanvasNavigation } from "./hooks/useCanvasNavigation";
 import {
-  downloadFlatData,
   loadSavedFlat,
   parseFlatData,
+  saveFlatFile,
   saveFlatData,
 } from "./persistence/persistence";
 import { getFitScale, getFloorPlanBounds } from "./geometry/viewport";
@@ -41,10 +42,17 @@ import type {
 
 export default function FlatPlanner() {
   const [editorMode, setEditorMode] = useState<EditorMode>("flat");
+  const [mobilePanel, setMobilePanel] = useState<"canvas" | "rooms" | "details">(
+    "canvas",
+  );
   const [isFlatLocked, setIsFlatLocked] = useState(false);
   const importFileRef = useRef<HTMLInputElement>(null);
   const [dragViewBounds, setDragViewBounds] = useState<PlanBounds | null>(null);
   const [manualFloorPlanScale, setManualFloorPlanScale] = useState<number | null>(null);
+  const [manualRoomDesignerScale, setManualRoomDesignerScale] =
+    useState<number | null>(null);
+  const [floorPlanOffset, setFloorPlanOffset] = useState({ x: 0, y: 0 });
+  const [roomDesignerOffset, setRoomDesignerOffset] = useState({ x: 0, y: 0 });
 
   const [rooms, setRooms] = useState<Room[]>([]);
   const [selectedRoomId, setSelectedRoomId] = useState<number | null>(null);
@@ -85,10 +93,28 @@ export default function FlatPlanner() {
     ? getRoomWallBounds(selectedRoom, wallThickness, wallThicknesses)
     : null;
 
-  const roomDesignerScale = getFitScale(
+  const calculatedRoomDesignerScale = getFitScale(
     roomDesignerBounds,
     roomDesignerCanvasSize,
   );
+  const roomDesignerScale =
+    manualRoomDesignerScale ?? calculatedRoomDesignerScale;
+  const floorPlanNavigation = useCanvasNavigation({
+    bounds: visibleFloorPlanBounds,
+    canvasSize: floorPlanCanvasSize,
+    scale: floorPlanScale,
+    onScaleChange: setManualFloorPlanScale,
+    offset: floorPlanOffset,
+    onOffsetChange: setFloorPlanOffset,
+  });
+  const roomDesignerNavigation = useCanvasNavigation({
+    bounds: roomDesignerBounds,
+    canvasSize: roomDesignerCanvasSize,
+    scale: roomDesignerScale,
+    onScaleChange: setManualRoomDesignerScale,
+    offset: roomDesignerOffset,
+    onOffsetChange: setRoomDesignerOffset,
+  });
   const furnitureEditor = useFurnitureEditor({
     rooms,
     selectedRoom,
@@ -306,12 +332,33 @@ export default function FlatPlanner() {
     setSaveMessage("Saved in this browser");
   }
 
-  function exportFlat() {
-    downloadFlatData(flatData);
-    setSaveMessage("Flat exported to flat-planner.json");
+  async function saveFlatToFile() {
+    try {
+      const savedFile = await saveFlatFile(flatData);
+
+      if (!savedFile) {
+        return;
+      }
+
+      setSaveMessage(
+        savedFile.destination === "chosen"
+          ? `Saved ${savedFile.fileName}`
+          : `Downloaded ${savedFile.fileName}; location depends on browser download settings.`,
+      );
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") {
+        return;
+      }
+
+      if (!(error instanceof Error)) {
+        throw error;
+      }
+
+      setSaveMessage(`Could not save the flat file: ${error.message}`);
+    }
   }
 
-  async   function importFlat(event: ChangeEvent<HTMLInputElement>) {
+  async function importFlat(event: ChangeEvent<HTMLInputElement>) {
     if (isFlatLocked) {
       return;
     }
@@ -341,6 +388,9 @@ export default function FlatPlanner() {
       cancelRoomDrag();
       resetRoomEditor();
       setManualFloorPlanScale(null);
+      setManualRoomDesignerScale(null);
+      setFloorPlanOffset({ x: 0, y: 0 });
+      setRoomDesignerOffset({ x: 0, y: 0 });
       setEditorMode("flat");
       setSaveMessage(`Imported ${file.name}`);
     } catch (error) {
@@ -463,9 +513,9 @@ export default function FlatPlanner() {
           <button
             className={styles.fileButton}
             type="button"
-            onClick={exportFlat}
+            onClick={saveFlatToFile}
           >
-            Export
+            Save file
           </button>
           <button
             className={styles.fileButton}
@@ -497,28 +547,49 @@ export default function FlatPlanner() {
 
       <div className={styles.editorLayout}>
         <RoomListPanel
+          className={
+            mobilePanel === "rooms"
+              ? styles.mobilePanelVisible
+              : styles.mobilePanelHidden
+          }
           rooms={rooms}
           selectedRoomId={selectedRoomId}
           isFlatLocked={isFlatLocked}
           onToggleLock={toggleFlatLock}
-          onAddRoom={startRoomCreation}
+          onAddRoom={() => {
+            setMobilePanel("canvas");
+            startRoomCreation();
+          }}
           onSelectRoom={(roomId) => {
             setSelectedRoomId(roomId);
+            setManualRoomDesignerScale(null);
+            setRoomDesignerOffset({ x: 0, y: 0 });
             setEditorMode("room-designer");
+            setMobilePanel("canvas");
           }}
           onRemoveRoom={removeRoom}
         />
 
-        <section className={styles.workspace}>
+        <section
+          className={`${styles.workspace} ${
+            mobilePanel === "canvas"
+              ? styles.mobilePanelVisible
+              : styles.mobilePanelHidden
+          }`}
+        >
           {editorMode === "flat" ? (
             <FlatPlanView
               canvasRef={floorPlanCanvasRef}
               canvasSize={floorPlanCanvasSize}
               bounds={visibleFloorPlanBounds}
               scale={floorPlanScale}
+              navigation={floorPlanNavigation}
               canFit={Boolean(floorPlanBounds)}
               canResetZoom={
-                Boolean(floorPlanBounds) && manualFloorPlanScale !== null
+                Boolean(floorPlanBounds) &&
+                (manualFloorPlanScale !== null ||
+                  floorPlanOffset.x !== 0 ||
+                  floorPlanOffset.y !== 0)
               }
               onZoomOut={() =>
                 setManualFloorPlanScale(Math.max(0.2, floorPlanScale / 1.2))
@@ -526,7 +597,10 @@ export default function FlatPlanner() {
               onZoomIn={() =>
                 setManualFloorPlanScale(Math.min(5, floorPlanScale * 1.2))
               }
-              onFitToView={() => setManualFloorPlanScale(null)}
+              onFitToView={() => {
+                setManualFloorPlanScale(null);
+                setFloorPlanOffset({ x: 0, y: 0 });
+              }}
               canvasProps={{
                 isFlatLocked,
                 rooms,
@@ -564,17 +638,33 @@ export default function FlatPlanner() {
                   setSelectedWallId(segment.id);
                   setSelectedRoomId(selectedSource.roomId);
                   setSelectedFurnitureId(null);
+                  setMobilePanel("details");
                 },
                 onOpeningPointerDown: startOpeningDrag,
                 onOpeningPointerMove: moveOpening,
                 onOpeningPointerUp: stopOpeningDrag,
                 onRoomClick: (room) => {
                   setSelectedRoomId(room.id);
+                  setManualRoomDesignerScale(null);
+                  setRoomDesignerOffset({ x: 0, y: 0 });
                   setSelectedWallId(null);
 
                   if (!wasRoomDragged.current) {
                     setEditorMode("room-designer");
+                    setMobilePanel("canvas");
                   }
+                },
+                onFurnitureClick: (placement) => {
+                  setSelectedRoomId(placement.roomId);
+                  setManualRoomDesignerScale(null);
+                  setRoomDesignerOffset({ x: 0, y: 0 });
+                  setSelectedWallId(null);
+                  setSelectedFurnitureId(null);
+                  setSelectedOpeningId(null);
+                  setFurnitureDetailsPosition(null);
+                  setOpeningDetailsPosition(null);
+                  setEditorMode("room-designer");
+                  setMobilePanel("canvas");
                 },
                 onRoomPointerDown: startRoomDrag,
                 onRoomPointerMove: moveRoom,
@@ -587,6 +677,28 @@ export default function FlatPlanner() {
               {editorMode === "room-designer" && (
                 <RoomDesignerView
                   selectedRoom={selectedRoom}
+                  navigation={roomDesignerNavigation}
+                  canFit={Boolean(roomDesignerBounds)}
+                  canResetZoom={
+                    Boolean(roomDesignerBounds) &&
+                    (manualRoomDesignerScale !== null ||
+                      roomDesignerOffset.x !== 0 ||
+                      roomDesignerOffset.y !== 0)
+                  }
+                  onZoomOut={() =>
+                    setManualRoomDesignerScale(
+                      Math.max(0.2, roomDesignerScale / 1.2),
+                    )
+                  }
+                  onZoomIn={() =>
+                    setManualRoomDesignerScale(
+                      Math.min(5, roomDesignerScale * 1.2),
+                    )
+                  }
+                  onFitToView={() => {
+                    setManualRoomDesignerScale(null);
+                    setRoomDesignerOffset({ x: 0, y: 0 });
+                  }}
                   canvasProps={
                     selectedRoom
                       ? {
@@ -615,9 +727,13 @@ export default function FlatPlanner() {
                   templates={furnitureTemplates}
                   onBack={() => {
                     setManualFloorPlanScale(null);
+                    setManualRoomDesignerScale(null);
+                    setFloorPlanOffset({ x: 0, y: 0 });
+                    setRoomDesignerOffset({ x: 0, y: 0 });
                     setSelectedFurnitureId(null);
                     setFurnitureDetailsPosition(null);
                     setEditorMode("flat");
+                    setMobilePanel("canvas");
                   }}
                   onAddFurniture={addFurnitureToRoom}
                   onCreateTemplate={() =>
@@ -691,6 +807,11 @@ export default function FlatPlanner() {
         </section>
 
         <DetailsPanel
+          className={
+            mobilePanel === "details"
+              ? styles.mobilePanelVisible
+              : styles.mobilePanelHidden
+          }
           editorMode={editorMode}
           isFlatLocked={isFlatLocked}
           furniturePlacements={furniturePlacements}
@@ -725,6 +846,24 @@ export default function FlatPlanner() {
           updateWallOpening={updateWallOpening}
           updateOpeningSwingSide={updateOpeningSwingSide}
         />
+        <nav className={styles.mobilePanelNav} aria-label="Planner panels">
+          {(
+            [
+              ["canvas", "Plan"],
+              ["rooms", "Rooms"],
+              ["details", "Details"],
+            ] as const
+          ).map(([panel, label]) => (
+            <button
+              key={panel}
+              type="button"
+              aria-pressed={mobilePanel === panel}
+              onClick={() => setMobilePanel(panel)}
+            >
+              {label}
+            </button>
+          ))}
+        </nav>
       </div >
     </main >
   );

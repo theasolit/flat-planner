@@ -7,6 +7,7 @@ import type {
   RoomComponent,
   Room,
 } from "../types";
+import { createId } from "../utils/createId";
 
 type Props = {
   rooms: Room[];
@@ -75,7 +76,7 @@ export function useFurnitureEditor({
     }
 
     const template: FurnitureTemplate = {
-      id: crypto.randomUUID(),
+      id: createId(),
       name: trimmedName,
       shape:
         components.length === 1
@@ -97,7 +98,7 @@ export function useFurnitureEditor({
     }
 
     const placement: FurniturePlacement = {
-      id: crypto.randomUUID(),
+      id: createId(),
       templateId: template.id,
       roomId: selectedRoom.id,
       x: selectedRoom.x + (selectedRoom.width - template.width) / 2,
@@ -131,8 +132,8 @@ export function useFurnitureEditor({
     const currentLength = placement.length ?? template.length;
     const width = field === "width" ? value : currentWidth;
     const length =
-      template.shape === "circle"
-        ? width
+      template.shape === "circle" || template.shape === "quarter-circle"
+        ? currentLength * (width / currentWidth)
         : field === "length"
           ? value
           : currentLength;

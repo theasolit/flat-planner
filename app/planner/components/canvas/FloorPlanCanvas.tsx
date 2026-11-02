@@ -7,6 +7,7 @@ import {
   RoomShapeLayer,
   WallOpeningsLayer,
 } from "./RoomGeometryLayers";
+import type { CanvasNavigation } from "../../hooks/useCanvasNavigation";
 import { getRoomArea } from "../../geometry/geometry";
 import type {
   FurniturePlacement,
@@ -25,6 +26,7 @@ type Props = {
   canvasSize: CanvasSize;
   bounds: PlanBounds | null;
   scale: number;
+  navigation: CanvasNavigation;
   isFlatLocked: boolean;
   rooms: Room[];
   selectedRoomId: number | null;
@@ -44,6 +46,7 @@ type Props = {
   onOpeningPointerMove: (event: PointerEvent<HTMLButtonElement>) => void;
   onOpeningPointerUp: (event: PointerEvent<HTMLButtonElement>) => void;
   onRoomClick: (room: Room) => void;
+  onFurnitureClick: (placement: FurniturePlacement) => void;
   onRoomPointerDown: (
     event: PointerEvent<HTMLButtonElement>,
     room: Room,
@@ -57,6 +60,7 @@ export default function FloorPlanCanvas({
   canvasSize,
   bounds,
   scale,
+  navigation,
   isFlatLocked,
   rooms,
   selectedRoomId,
@@ -73,6 +77,7 @@ export default function FloorPlanCanvas({
   onOpeningPointerMove,
   onOpeningPointerUp,
   onRoomClick,
+  onFurnitureClick,
   onRoomPointerDown,
   onRoomPointerMove,
   onRoomPointerUp,
@@ -81,6 +86,11 @@ export default function FloorPlanCanvas({
     <div
       ref={canvasRef}
       className={`${sharedStyles.canvas} ${styles.floorPlanCanvas}`}
+      data-testid="floor-plan-canvas"
+      onPointerDownCapture={navigation.onPointerDownCapture}
+      onPointerMoveCapture={navigation.onPointerMoveCapture}
+      onPointerUpCapture={navigation.onPointerUpCapture}
+      onPointerCancelCapture={navigation.onPointerCancelCapture}
       onClick={(event) => {
         if (event.target === event.currentTarget) {
           onBackgroundClick();
@@ -92,12 +102,15 @@ export default function FloorPlanCanvas({
       ) : (
         <div
           className={styles.floorPlanContents}
+          data-testid="floor-plan-contents"
           style={{
             transform: bounds
-              ? `translate(${(canvasSize.width - (bounds.width / 2) * scale) / 2 -
-                (bounds.minX / 2) * scale
-                }px, ${(canvasSize.height - (bounds.height / 2) * scale) / 2 -
-                (bounds.minY / 2) * scale
+              ? `translate(${canvasSize.width / 2 -
+                ((bounds.minX + bounds.maxX) / 4) * scale +
+                navigation.offset.x
+                }px, ${canvasSize.height / 2 -
+                ((bounds.minY + bounds.maxY) / 4) * scale +
+                navigation.offset.y
                 }px) scale(${scale})`
               : undefined,
           }}
@@ -173,6 +186,7 @@ export default function FloorPlanCanvas({
                   height: `${length / 2}px`,
                   transform: `rotate(${placement.rotation}deg)`,
                 }}
+                onClick={() => onFurnitureClick(placement)}
               >
                 <FurnitureTemplateLayer
                   template={template}

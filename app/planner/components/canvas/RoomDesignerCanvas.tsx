@@ -1,6 +1,7 @@
 import type { PointerEvent, RefObject } from "react";
 import sharedStyles from "../../FlatPlanner.module.css";
 import styles from "./RoomDesignerCanvas.module.css";
+import type { CanvasNavigation } from "../../hooks/useCanvasNavigation";
 import {
   CanonicalWallLayer,
   FurnitureTemplateLayer,
@@ -26,6 +27,7 @@ type Props = {
   rooms: Room[];
   bounds: PlanBounds | null;
   scale: number;
+  navigation: CanvasNavigation;
   wallSegments: WallSegment[];
   wallOpenings: WallOpening[];
   wallThickness: number;
@@ -57,6 +59,7 @@ export default function RoomDesignerCanvas({
   rooms,
   bounds,
   scale,
+  navigation,
   wallSegments,
   wallOpenings,
   wallThickness,
@@ -77,6 +80,11 @@ export default function RoomDesignerCanvas({
     <div
       ref={canvasRef}
       className={`${sharedStyles.canvas} ${styles.roomDesignerCanvas}`}
+      data-testid="room-designer-canvas"
+      onPointerDownCapture={navigation.onPointerDownCapture}
+      onPointerMoveCapture={navigation.onPointerMoveCapture}
+      onPointerUpCapture={navigation.onPointerUpCapture}
+      onPointerCancelCapture={navigation.onPointerCancelCapture}
       onClick={(event) => onCanvasClick(event.target)}
     >
       <button
@@ -93,9 +101,11 @@ export default function RoomDesignerCanvas({
         style={{
           transform: bounds
             ? `translate(${canvasSize.width / 2 -
-              ((bounds.minX + bounds.maxX) / 4) * scale
+              ((bounds.minX + bounds.maxX) / 4) * scale +
+              navigation.offset.x
               }px, ${canvasSize.height / 2 -
-              ((bounds.minY + bounds.maxY) / 4) * scale
+              ((bounds.minY + bounds.maxY) / 4) * scale +
+              navigation.offset.y
               }px) scale(${scale})`
             : undefined,
         }}

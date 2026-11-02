@@ -1,0 +1,65 @@
+.addRoomButton {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid var(--app-border);
+    border-radius: 6px;
+    background-color: var(--app-surface);
+    color: var(--app-text);
+    font: inherit;
+    text-align: left;
+}
+
+.roomCreator {
+    position: relative;
+    display: flex;
+    flex: 1;
+    min-height: 0;
+    flex-direction: column;
+}
+
+.creatorHeader {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.creatorHeader .creatorTitle {
+    margin: 0;
+}
+
+.creatorBackButton {
+    display: grid;
+    flex: 0 0 36px;
+    width: 36px;
+    height: 36px;
+    place-items: center;
+    border: 1px solid var(--app-border);
+    border-radius: 8px;
+    background-color: var(--app-surface);
+    color: var(--app-text);
+    font-size: 20px;
+    line-height: 1;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgb(0 0 0 / 30%);
+}
+
+.creatorBackButton:hover,
+.creatorBackButton:focus-visible {
+    background-color: var(--palette-green-light);
+}
+
+.shapePicker {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+}
+
+.shapePicker button {
+    padding: 8px 4px;
+    text-align: center;
+}
+
+.shapePicker button[aria-pressed="true"] {
+    border-color: var(--palette-blue-medium);
+    background-color: var(--palette-blue-medium);
+}

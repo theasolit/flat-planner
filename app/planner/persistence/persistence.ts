@@ -5,7 +5,9 @@ import type {
   Room,
   RoomComponent,
   WallOpening,
-} from "./types";
+} from "../types";
+
+const STORAGE_KEY = "flat-planner-v2";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -153,4 +155,33 @@ export function parseFlatData(serialized: string): Flat {
   }
 
   return value;
+}
+
+export function serializeFlatData(flat: Flat, pretty = false): string {
+  return JSON.stringify(flat, null, pretty ? 2 : undefined);
+}
+
+export function loadSavedFlat(): Flat | null {
+  const serialized = localStorage.getItem(STORAGE_KEY);
+
+  return serialized ? parseFlatData(serialized) : null;
+}
+
+export function saveFlatData(flat: Flat): void {
+  localStorage.setItem(STORAGE_KEY, serializeFlatData(flat));
+}
+
+export function downloadFlatData(flat: Flat): void {
+  const file = new Blob([serializeFlatData(flat, true)], {
+    type: "application/json",
+  });
+  const downloadUrl = URL.createObjectURL(file);
+  const link = document.createElement("a");
+
+  link.href = downloadUrl;
+  link.download = "flat-planner.json";
+  document.body.append(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 0);
 }

@@ -1,0 +1,43 @@
+.roomList {
+    display: grid;
+    gap: 6px;
+    margin-top: 16px;
+    padding: 0;
+    list-style: none;
+}
+
+.roomHeaderActions {
+    display: flex;
+    gap: 6px;
+}
+
+.flatLockButton {
+    display: grid;
+    width: 32px;
+    height: 32px;
+    place-items: center;
+    border: 1px solid var(--app-border);
+    border-radius: 8px;
+    background-color: var(--app-surface);
+    color: var(--app-text);
+    cursor: pointer;
+}
+
+.flatLockButton:hover,
+.flatLockButton:focus-visible {
+    background-color: var(--app-canvas);
+}
+
+.flatLockButton[aria-pressed="true"] {
+    color: var(--app-accent);
+}
+
+.flatLockButton svg {
+    width: 18px;
+    height: 18px;
+    fill: none;
+    stroke: currentColor;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 1.8;
+}

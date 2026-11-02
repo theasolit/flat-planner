@@ -1,12 +1,13 @@
 import type { PointerEvent, RefObject } from "react";
-import styles from "../page.module.css";
+import sharedStyles from "../../FlatPlanner.module.css";
+import styles from "./FloorPlanCanvas.module.css";
 import {
   CanonicalWallLayer,
   FurnitureTemplateLayer,
   RoomShapeLayer,
   WallOpeningsLayer,
 } from "./RoomGeometryLayers";
-import { getRoomArea } from "./geometry";
+import { getRoomArea } from "../../geometry/geometry";
 import type {
   FurniturePlacement,
   FurnitureTemplate,
@@ -15,7 +16,7 @@ import type {
   Room,
   WallOpening,
   WallSegment,
-} from "./types";
+} from "../../types";
 
 type CanvasSize = { width: number; height: number };
 
@@ -86,7 +87,7 @@ export default function FloorPlanCanvas({
   return (
     <div
       ref={canvasRef}
-      className={`${styles.canvas} ${styles.floorPlanCanvas}`}
+      className={`${sharedStyles.canvas} ${styles.floorPlanCanvas}`}
       onClick={(event) => {
         if (event.target === event.currentTarget) {
           onBackgroundClick();
@@ -94,7 +95,7 @@ export default function FloorPlanCanvas({
       }}
     >
       {rooms.length === 0 ? (
-        <p className={styles.helperText}>Add a room to see it here.</p>
+        <p className={sharedStyles.helperText}>Add a room to see it here.</p>
       ) : (
         <div
           className={styles.floorPlanContents}
@@ -130,7 +131,7 @@ export default function FloorPlanCanvas({
             <button
               key={room.id}
               type="button"
-              className={`${styles.room} ${selectedRoomId === room.id ? styles.selectedRoom : ""
+              className={`${sharedStyles.room} ${selectedRoomId === room.id ? sharedStyles.selectedRoom : ""
                 }`}
               style={{
                 left: `${room.x / 2}px`,
@@ -146,7 +147,7 @@ export default function FloorPlanCanvas({
               data-room-id={room.id}
             >
               <RoomShapeLayer room={room} />
-              <span className={styles.roomLabel}>
+              <span className={sharedStyles.roomLabel}>
                 {room.name}
                 <br />
                 {Number((getRoomArea(room) / 10000).toFixed(1))} m²
@@ -170,9 +171,9 @@ export default function FloorPlanCanvas({
               <div
                 key={placement.id}
                 data-furniture-placement-id={placement.id}
-                className={`${styles.furnitureItem} ${styles.furnitureComposition} ${
+                className={`${sharedStyles.furnitureItem} ${sharedStyles.furnitureComposition} ${
                   selectedFurnitureId === placement.id
-                    ? styles.selectedFurniture
+                    ? sharedStyles.selectedFurniture
                     : ""
                 }`}
                 style={{
@@ -190,7 +191,7 @@ export default function FloorPlanCanvas({
                 onPointerCancel={onFurniturePointerUp}
               >
                 <FurnitureTemplateLayer template={template} />
-                <span className={styles.furnitureLabel}>{template.name}</span>
+                <span className={sharedStyles.furnitureLabel}>{template.name}</span>
               </div>
             );
           })}

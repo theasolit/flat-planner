@@ -1,12 +1,12 @@
 import { useRef, useState, type Dispatch, type PointerEvent, type SetStateAction } from "react";
 import {
   getStraightRoomBoundaryEdges,
-} from "./geometry";
+} from "../geometry/geometry";
 import {
   findOpeningOffset,
   findOpeningSlot as findAvailableOpeningSlot,
-} from "./openingGeometry";
-import type { Room, WallOpening } from "./types";
+} from "../geometry/openingGeometry";
+import type { Room, WallOpening } from "../types";
 
 type Props = {
   rooms: Room[];

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { findOpeningOffset, findOpeningSlot } from "../openingGeometry";
-import type { WallOpening } from "../types";
+import type { WallOpening } from "../../types";
 
 const opening = (
   id: string,

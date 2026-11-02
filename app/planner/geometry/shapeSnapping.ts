@@ -1,9 +1,6 @@
-export type ShapeBounds = {
-  minX: number;
-  minY: number;
-  maxX: number;
-  maxY: number;
-};
+import type { ComponentBounds } from "../types";
+
+export type ShapeBounds = ComponentBounds;
 
 function closestSnap(
   candidates: number[],

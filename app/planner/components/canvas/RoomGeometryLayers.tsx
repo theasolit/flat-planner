@@ -1,4 +1,5 @@
-import styles from "../page.module.css";
+import sharedStyles from "../../FlatPlanner.module.css";
+import styles from "./RoomGeometryLayers.module.css";
 import type { PointerEvent } from "react";
 import type {
   Pair,
@@ -8,13 +9,13 @@ import type {
   FurnitureTemplate,
   WallOpening,
   WallSegment,
-} from "./types";
+} from "../../types";
 import {
   getComponentRing,
   getRoomBoundaryEdges,
   getRoomEdgeSide,
   getRoomOutline,
-} from "./geometry";
+} from "../../geometry/geometry";
 
 export function CanonicalWallLayer({
   segments,
@@ -156,7 +157,7 @@ export function FurnitureTemplateLayer({
       {components.map((component) => (
         <path
           key={component.id}
-          className={styles.furnitureCompositionShape}
+          className={sharedStyles.furnitureCompositionShape}
           d={`${getComponentRing(component)
             .map(([x, y], index) =>
               `${index === 0 ? "M" : "L"} ${x} ${y}`,
@@ -236,7 +237,7 @@ export function WallOpeningsLayer({
         key={opening.id}
         type="button"
         aria-label={`Drag ${opening.kind === "window" ? "window" : "doorway"}`}
-        className={styles.wallOpening}
+        className={sharedStyles.wallOpening}
         style={{
           left: `${left}px`,
           top: `${top}px`,

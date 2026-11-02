@@ -1,12 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
+  getComponentBounds,
+  getComponentsBounds,
   getRoomArea,
   getRoomBoundaryEdges,
   getStraightRoomBoundaryEdges,
   migrateLegacyWallOpenings,
-  snapRoomPosition,
 } from "../geometry";
-import type { Room, RoomComponent, WallOpening } from "../types";
+import { snapRoomPosition } from "../roomSnapping";
+import type { Room, RoomComponent, WallOpening } from "../../types";
 
 function makeRoom(components: RoomComponent[]): Room {
   return {
@@ -21,6 +23,43 @@ function makeRoom(components: RoomComponent[]): Room {
 }
 
 describe("room geometry", () => {
+  it("calculates component and composed shape bounds", () => {
+    const components: RoomComponent[] = [
+      {
+        id: "base",
+        shape: "rectangle",
+        x: 10,
+        y: 20,
+        width: 30,
+        length: 10,
+        rotation: 0,
+      },
+      {
+        id: "extension",
+        shape: "rectangle",
+        x: 40,
+        y: 10,
+        width: 15,
+        length: 20,
+        rotation: 0,
+      },
+    ];
+
+    expect(getComponentBounds(components[0]!)).toEqual({
+      minX: 10,
+      minY: 20,
+      maxX: 40,
+      maxY: 30,
+    });
+    expect(getComponentsBounds(components)).toEqual({
+      minX: 10,
+      minY: 10,
+      maxX: 55,
+      maxY: 30,
+    });
+    expect(getComponentsBounds([])).toBeNull();
+  });
+
   it("snaps adjacent rooms with the configured wall thickness between them", () => {
     const otherRoom = {
       ...makeRoom([

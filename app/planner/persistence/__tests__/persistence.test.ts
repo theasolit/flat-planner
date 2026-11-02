@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { parseFlatData } from "../persistence";
+import {
+  parseFlatData,
+  serializeFlatData,
+} from "../persistence";
+import type { Flat } from "../../types";
 
-const validFlat = {
+const validFlat: Flat = {
   rooms: [
     {
       id: 1,
@@ -32,6 +36,13 @@ const validFlat = {
 };
 
 describe("flat import validation", () => {
+  it("serializes flat data for storage and export", () => {
+    expect(parseFlatData(serializeFlatData(validFlat))).toEqual(validFlat);
+    expect(parseFlatData(serializeFlatData(validFlat, true))).toEqual(
+      validFlat,
+    );
+  });
+
   it("parses a complete flat export", () => {
     expect(parseFlatData(JSON.stringify(validFlat))).toEqual(validFlat);
   });

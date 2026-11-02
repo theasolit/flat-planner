@@ -1,0 +1,32 @@
+.roomCompositionPreview {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    touch-action: none;
+}
+
+.roomCompositionShape {
+    fill: var(--app-accent);
+    stroke: var(--app-border);
+    stroke-width: 2;
+    vector-effect: non-scaling-stroke;
+    cursor: grab;
+}
+
+.roomCompositionShapeSelected {
+    stroke: var(--palette-blue-medium);
+    stroke-width: 4;
+}
+
+.roomCompositionLabel {
+    position: absolute;
+    right: 12px;
+    bottom: 12px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    background: var(--app-surface);
+    color: var(--app-text);
+    font-size: 12px;
+    pointer-events: none;
+}

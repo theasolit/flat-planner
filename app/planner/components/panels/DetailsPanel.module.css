@@ -1,0 +1,35 @@
+.flatSettings {
+    gap: 16px;
+}
+
+.roomDimensions {
+    display: grid;
+    gap: 12px;
+}
+
+.roomDimensionList {
+    display: grid;
+    gap: 8px;
+    margin: 0;
+}
+
+.roomDimensionList > div {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    font-size: 14px;
+}
+
+.roomDimensionList dt {
+    color: var(--app-muted);
+}
+
+.roomDimensionList dd {
+    margin: 0;
+    font-weight: 500;
+}
+
+.roomEditButton svg {
+    fill: currentColor;
+    stroke: none;
+}

@@ -1,4 +1,4 @@
-import type { WallOpening } from "./types";
+import type { WallOpening } from "../types";
 
 export type OpeningSlot = { offset: number; width: number };
 

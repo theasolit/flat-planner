@@ -1,0 +1,12 @@
+.templatePicker {
+    min-height: 0;
+    padding: 16px;
+    overflow-y: auto;
+    border: 1px solid var(--app-border);
+    border-radius: 8px;
+    background-color: var(--app-surface);
+}
+
+.templatePicker .templateList {
+    margin-top: 12px;
+}

@@ -1,0 +1,12 @@
+.floorPlanCanvas {
+    flex: 1;
+    height: auto;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.floorPlanContents {
+    position: absolute;
+    inset: 0;
+    transform-origin: top left;
+}

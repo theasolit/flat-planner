@@ -1,81 +1,13 @@
 import { useState, type PointerEvent } from "react";
-import styles from "../page.module.css";
-import { getComponentRing, getComponentsArea } from "./geometry";
-import { snapShapePosition, type ShapeBounds } from "./shapeSnapping";
-import type { FurnitureTemplate, Pair, Room, RoomComponent } from "./types";
-
-export function FurnitureTemplatePicker({
-  room,
-  templates,
-  onAddFurniture,
-  onCreateTemplate,
-  onDeleteTemplate,
-}: {
-  room: Room;
-  templates: FurnitureTemplate[];
-  onAddFurniture: (template: FurnitureTemplate) => void;
-  onCreateTemplate: () => void;
-  onDeleteTemplate: (template: FurnitureTemplate) => void;
-}) {
-  return (
-    <div className={styles.templatePicker}>
-      <div className={`${styles.doorwayHeader} ${styles.roomListHeader}`}>
-        <h3 className={styles.panelTitle}>Furniture</h3>
-        <button
-          className={styles.addDoorButton}
-          type="button"
-          aria-label="Create furniture template"
-          title="Create furniture template"
-          onClick={onCreateTemplate}
-        >
-          +
-        </button>
-      </div>
-
-      {templates.length === 0 ? (
-        <p className={styles.helperText}>
-          Create a template to add furniture to this room.
-        </p>
-      ) : (
-        <ul className={styles.doorList}>
-          {templates.map((template) => {
-            const tooLarge =
-              template.width > room.width || template.length > room.length;
-
-            return (
-              <li key={template.id} className={styles.doorListItem}>
-                <button
-                  className={`${styles.doorListButton} ${styles.roomButton}`}
-                  type="button"
-                  onClick={() => onAddFurniture(template)}
-                  disabled={tooLarge}
-                  title={
-                    tooLarge
-                      ? "This template is larger than the room"
-                      : "Add to this room"
-                  }
-                >
-                  {template.name} — {template.width} × {template.length} cm
-                </button>
-                <button
-                  className={styles.deleteOpeningButton}
-                  type="button"
-                  aria-label={`Delete furniture template ${template.name}`}
-                  title={`Delete ${template.name} template and placed instances`}
-                  onClick={() => onDeleteTemplate(template)}
-                >
-                  <svg viewBox="0 0 24 24" aria-hidden="true">
-                    <path d="M4 7h16M10 11v6m4-6v6M6 7l1 14h10l1-14M9 7V4h6v3" />
-                  </svg>
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-      )}
-    </div>
-  );
-}
+import sharedStyles from "../../FlatPlanner.module.css";
+import styles from "./ShapeCompositionForm.module.css";
+import {
+  getComponentBounds,
+  getComponentsArea,
+} from "../../geometry/geometry";
+import { snapShapePosition, type ShapeBounds } from "../../geometry/shapeSnapping";
+import ShapeCompositionCanvas from "../canvas/ShapeCompositionCanvas";
+import type { Pair, RoomComponent } from "../../types";
 
 export function ShapeCompositionForm({
   name,
@@ -140,17 +72,10 @@ export function ShapeCompositionForm({
     viewBox: { x: number; y: number; width: number; height: number };
   } | null>(null);
 
-  const componentBounds = components.map((component) => {
-    const points = getComponentRing(component);
-
-    return {
-      component,
-      minX: Math.min(...points.map(([x]) => x)),
-      minY: Math.min(...points.map(([, y]) => y)),
-      maxX: Math.max(...points.map(([x]) => x)),
-      maxY: Math.max(...points.map(([, y]) => y)),
-    };
-  });
+  const componentBounds = components.map((component) => ({
+    component,
+    ...getComponentBounds(component),
+  }));
   const minX = Math.min(...componentBounds.map((bounds) => bounds.minX));
   const minY = Math.min(...componentBounds.map((bounds) => bounds.minY));
   const maxX = Math.max(...componentBounds.map((bounds) => bounds.maxX));
@@ -255,17 +180,9 @@ export function ShapeCompositionForm({
       x: requestedX,
       y: requestedY,
     };
-    const movedPoints = getComponentRing(moved);
-    const movedBounds: ShapeBounds = {
-      minX: Math.min(...movedPoints.map(([x]) => x)),
-      minY: Math.min(...movedPoints.map(([, y]) => y)),
-      maxX: Math.max(...movedPoints.map(([x]) => x)),
-      maxY: Math.max(...movedPoints.map(([, y]) => y)),
-    };
+    const movedBounds: ShapeBounds = getComponentBounds(moved);
     const others = componentBounds
-      .filter(
-      (bounds) => bounds.component.id !== dragged.id,
-      )
+      .filter((bounds) => bounds.component.id !== dragged.id)
       .map(({ minX, minY, maxX, maxY }) => ({
         minX,
         minY,
@@ -300,6 +217,39 @@ export function ShapeCompositionForm({
     }
   }
 
+  function startComponentDrag(
+    component: RoomComponent,
+    event: PointerEvent<SVGPathElement>,
+  ) {
+    event.preventDefault();
+    event.stopPropagation();
+    const svg = event.currentTarget.ownerSVGElement;
+    const point = svg
+      ? getSvgCoordinates(svg, event.clientX, event.clientY)
+      : null;
+
+    if (!point) {
+      return;
+    }
+
+    setSelectedComponentId(component.id);
+    setComponentDrag({
+      id: component.id,
+      pointerId: event.pointerId,
+      startSvgX: point[0],
+      startSvgY: point[1],
+      startX: component.x,
+      startY: component.y,
+      viewBox: {
+        x: minX - 60,
+        y: minY - 60,
+        width: Math.max(width + 120, 1),
+        height: Math.max(length + 120, 1),
+      },
+    });
+    svg?.setPointerCapture(event.pointerId);
+  }
+
   function saveComposition() {
     const normalizedComponents = components.map((component) => ({
       ...component,
@@ -322,24 +272,24 @@ export function ShapeCompositionForm({
         >
           &lt;
         </button>
-        <h2 className={styles.workspaceTitle}>
+        <h2 className={`${sharedStyles.workspaceTitle} ${styles.creatorTitle}`}>
           {title ?? (isEditing ? "Edit room" : "Create a room")}
         </h2>
       </div>
 
-      <div className={styles.roomCreatorContent}>
-        <div className={styles.dimensionFields}>
-          <label className={styles.dimensionField}>
+      <div className={sharedStyles.roomCreatorContent}>
+        <div className={sharedStyles.dimensionFields}>
+          <label className={sharedStyles.dimensionField}>
             {nameLabel}
             <input
-              className={styles.dimensionInput}
+              className={sharedStyles.dimensionInput}
               type="text"
               value={name}
               onChange={(event) => onNameChange(event.target.value)}
             />
           </label>
 
-          <span className={styles.dimensionField}>Add a shape</span>
+          <span className={sharedStyles.dimensionField}>Add a shape</span>
           <div className={styles.shapePicker}>
             {(
               [
@@ -350,7 +300,7 @@ export function ShapeCompositionForm({
             ).map(([value, label]) => (
               <button
                 key={value}
-                className={styles.roomButton}
+                className={sharedStyles.roomButton}
                 type="button"
                 aria-pressed={shape === value}
                 onClick={() => setShape(value)}
@@ -362,10 +312,10 @@ export function ShapeCompositionForm({
 
           {selectedComponent && (
             <>
-              <label className={styles.dimensionField}>
+              <label className={sharedStyles.dimensionField}>
                 Selected shape width (cm)
                 <input
-                  className={styles.dimensionInput}
+                  className={sharedStyles.dimensionInput}
                   type="number"
                   min="1"
                   value={selectedComponent.width}
@@ -379,10 +329,10 @@ export function ShapeCompositionForm({
               </label>
 
               {selectedComponent.shape !== "circle" && (
-                <label className={styles.dimensionField}>
+                <label className={sharedStyles.dimensionField}>
                   Selected shape length (cm)
                   <input
-                    className={styles.dimensionInput}
+                    className={sharedStyles.dimensionInput}
                     type="number"
                     min="1"
                     value={selectedComponent.length}
@@ -398,10 +348,10 @@ export function ShapeCompositionForm({
             </>
           )}
 
-          <label className={styles.dimensionField}>
+          <label className={sharedStyles.dimensionField}>
             New shape width (cm)
             <input
-              className={styles.dimensionInput}
+              className={sharedStyles.dimensionInput}
               type="number"
               min="1"
               value={shapeWidth}
@@ -410,10 +360,10 @@ export function ShapeCompositionForm({
           </label>
 
           {shape !== "circle" && (
-            <label className={styles.dimensionField}>
+            <label className={sharedStyles.dimensionField}>
               New shape length (cm)
               <input
-                className={styles.dimensionInput}
+                className={sharedStyles.dimensionInput}
                 type="number"
                 min="1"
                 value={shapeLength}
@@ -480,7 +430,7 @@ export function ShapeCompositionForm({
             Remove selected shape
           </button>
 
-          <p className={styles.helperText}>
+          <p className={sharedStyles.helperText}>
             Drag shapes in the preview to attach them. Nearby edges snap
             together.
           </p>
@@ -495,68 +445,19 @@ export function ShapeCompositionForm({
           </button>
         </div>
 
-        <div className={styles.canvas}>
-          <svg
-            className={styles.roomCompositionPreview}
-            viewBox={
-              componentDrag
-                ? `${componentDrag.viewBox.x} ${componentDrag.viewBox.y} ${componentDrag.viewBox.width} ${componentDrag.viewBox.height}`
-                : `${minX - 60} ${minY - 60} ${Math.max(width + 120, 1)} ${Math.max(length + 120, 1)}`
-            }
-            preserveAspectRatio="xMidYMid meet"
-            onPointerMove={moveComponent}
-            onPointerUp={finishComponentDrag}
-            onPointerCancel={finishComponentDrag}
-          >
-            {components.map((component) => (
-              <path
-                key={component.id}
-                className={`${styles.roomCompositionShape} ${selectedComponentId === component.id
-                    ? styles.roomCompositionShapeSelected
-                    : ""
-                  }`}
-                d={`${getComponentRing(component)
-                  .map(([x, y], index) =>
-                    `${index === 0 ? "M" : "L"} ${x} ${y}`,
-                  )
-                  .join(" ")} Z`}
-                onPointerDown={(event) => {
-                  event.preventDefault();
-                  event.stopPropagation();
-                  const svg = event.currentTarget.ownerSVGElement;
-                  const point = svg
-                    ? getSvgCoordinates(svg, event.clientX, event.clientY)
-                    : null;
-
-                  if (!point) {
-                    return;
-                  }
-
-                  setSelectedComponentId(component.id);
-                  setComponentDrag({
-                    id: component.id,
-                    pointerId: event.pointerId,
-                    startSvgX: point[0],
-                    startSvgY: point[1],
-                    startX: component.x,
-                    startY: component.y,
-                    viewBox: {
-                      x: minX - 60,
-                      y: minY - 60,
-                      width: Math.max(width + 120, 1),
-                      height: Math.max(length + 120, 1),
-                    },
-                  });
-                  svg?.setPointerCapture(event.pointerId);
-                }}
-              />
-            ))}
-          </svg>
-          <div className={styles.roomCompositionLabel}>
-            {name || previewName} — {Math.round(width)} × {Math.round(length)} cm ·{" "}
-            {Number((getComponentsArea(components) / 10000).toFixed(1))} m²
-          </div>
-        </div>
+        <ShapeCompositionCanvas
+          components={components}
+          selectedComponentId={selectedComponentId}
+          viewBox={
+            componentDrag
+              ? `${componentDrag.viewBox.x} ${componentDrag.viewBox.y} ${componentDrag.viewBox.width} ${componentDrag.viewBox.height}`
+              : `${minX - 60} ${minY - 60} ${Math.max(width + 120, 1)} ${Math.max(length + 120, 1)}`
+          }
+          label={`${name || previewName} — ${Math.round(width)} × ${Math.round(length)} cm · ${Number((getComponentsArea(components) / 10000).toFixed(1))} m²`}
+          onPointerMove={moveComponent}
+          onPointerUp={finishComponentDrag}
+          onComponentPointerDown={startComponentDrag}
+        />
       </div>
     </div>
   );

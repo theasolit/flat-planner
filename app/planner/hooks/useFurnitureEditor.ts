@@ -6,7 +6,7 @@ import type {
   FurnitureTemplate,
   RoomComponent,
   Room,
-} from "./types";
+} from "../types";
 
 type Props = {
   rooms: Room[];

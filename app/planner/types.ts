@@ -15,6 +15,13 @@ export type PlanBounds = {
   height: number;
 };
 
+export type ComponentBounds = {
+  minX: number;
+  minY: number;
+  maxX: number;
+  maxY: number;
+};
+
 export type Flat = {
   rooms: Room[];
   selectedRoomId: number | null;

@@ -1,0 +1,14 @@
+.roomDesigner {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+    flex-direction: column;
+}
+
+.roomDesignerContent {
+    display: grid;
+    flex: 1;
+    min-height: 0;
+    grid-template-columns: minmax(0, 1fr) 280px;
+    gap: 16px;
+}

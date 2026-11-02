@@ -24,10 +24,6 @@
     background-color: var(--app-surface);
 }
 
-.flatSettings {
-    gap: 16px;
-}
-
 .title {
     font-size: 20px;
     font-weight: 600;
@@ -130,6 +126,19 @@
     overflow: auto;
 }
 
+.wallOpening {
+    position: absolute;
+    z-index: 3;
+    padding: 0;
+    background-color: var(--app-accent);
+    cursor: grab;
+    touch-action: none;
+}
+
+.wallOpening:active {
+    cursor: grabbing;
+}
+
 .room {
     color: var(--app-background);
     display: flex;
@@ -144,20 +153,6 @@
     border: none;
     background: transparent;
     z-index: 2;
-}
-
-.roomShapeLayer {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    overflow: visible;
-    pointer-events: none;
-    z-index: 0;
-}
-
-.roomShape {
-    fill: var(--app-accent);
 }
 
 .roomLabel {
@@ -178,28 +173,9 @@
     font-weight: 600;
 }
 
-.addRoomButton {
-    width: 100%;
-    padding: 8px 12px;
-    border: 1px solid var(--app-border);
-    border-radius: 6px;
-    background-color: var(--app-surface);
-    color: var(--app-text);
-    font: inherit;
-    text-align: left;
-}
-
 .helperText {
     color: var(--app-muted);
     font-size: 14px;
-}
-
-.roomList {
-    display: grid;
-    gap: 6px;
-    margin-top: 16px;
-    padding: 0;
-    list-style: none;
 }
 
 .roomButton {
@@ -229,62 +205,9 @@
     font: inherit;
 }
 
-.roomDimensions {
-    display: grid;
-    gap: 12px;
-}
-
-.roomDimensionList {
-    display: grid;
-    gap: 8px;
-    margin: 0;
-}
-
-.roomDimensionList > div {
-    display: flex;
-    justify-content: space-between;
-    gap: 12px;
-    font-size: 14px;
-}
-
-.roomDimensionList dt {
-    color: var(--app-muted);
-}
-
-.roomDimensionList dd {
-    margin: 0;
-    font-weight: 500;
-}
-
-.wallOpening {
-    position: absolute;
-    z-index: 3;
-    padding: 0;
-    background-color: var(--app-accent);
-    cursor: grab;
-    touch-action: none;
-}
-
-.doorSwing {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: auto;
-    overflow: visible;
-    fill: none;
-    stroke: var(--app-text);
-    stroke-width: 2;
-    pointer-events: none;
-}
-
 .bottomDoorSwing {
     top: auto;
     bottom: 0;
-}
-
-.wallOpening:active {
-    cursor: grabbing;
 }
 
 .selectedOpening {
@@ -364,42 +287,6 @@
     margin-bottom: 0;
 }
 
-.roomHeaderActions {
-    display: flex;
-    gap: 6px;
-}
-
-.flatLockButton {
-    display: grid;
-    width: 32px;
-    height: 32px;
-    place-items: center;
-    border: 1px solid var(--app-border);
-    border-radius: 8px;
-    background-color: var(--app-surface);
-    color: var(--app-text);
-    cursor: pointer;
-}
-
-.flatLockButton:hover,
-.flatLockButton:focus-visible {
-    background-color: var(--app-canvas);
-}
-
-.flatLockButton[aria-pressed="true"] {
-    color: var(--app-accent);
-}
-
-.flatLockButton svg {
-    width: 18px;
-    height: 18px;
-    fill: none;
-    stroke: currentColor;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-    stroke-width: 1.8;
-}
-
 .addDoorButton {
     display: grid;
     width: 32px;
@@ -435,11 +322,6 @@
     stroke-width: 1.8;
 }
 
-.roomEditButton svg {
-    fill: currentColor;
-    stroke: none;
-}
-
 .deleteOpeningButton {
     display: grid;
     flex: 0 0 32px;
@@ -468,17 +350,6 @@
     border-color: var(--palette-blue-very-light);
     background-color: var(--palette-blue-medium);
     color: var(--palette-blue-very-light);
-}
-
-.windowFrame {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    pointer-events: none;
-    fill: none;
-    stroke: var(--palette-blue-medium);
-    stroke-width: 32;
 }
 
 .furnitureItem {
@@ -517,15 +388,6 @@
     overflow: visible;
 }
 
-.furnitureCompositionLayer {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    overflow: visible;
-    pointer-events: none;
-}
-
 .furnitureLabel {
     position: relative;
     z-index: 1;
@@ -544,159 +406,6 @@
     stroke: var(--palette-blue-medium);
 }
 
-.floorPlanCanvas {
-    flex: 1;
-    height: auto;
-    min-height: 0;
-    overflow: hidden;
-}
-
-.floorPlanContents {
-    position: absolute;
-    inset: 0;
-    transform-origin: top left;
-}
-
-.floorPlanToolbar {
-    display: flex;
-    flex: 0 0 auto;
-    align-items: center;
-    justify-content: space-between;
-    gap: 16px;
-}
-
-.floorPlanToolbar .workspaceTitle {
-    margin-bottom: 16px;
-}
-
-.zoomControls {
-    display: flex;
-    gap: 8px;
-    margin-bottom: 16px;
-}
-
-.zoomButton {
-    min-width: 36px;
-    padding: 6px 10px;
-    border: 1px solid var(--app-border);
-    border-radius: 6px;
-    background-color: var(--app-surface);
-    color: var(--app-text);
-    font: inherit;
-    cursor: pointer;
-}
-
-.zoomButton:disabled {
-    cursor: not-allowed;
-    opacity: 0.5;
-}
-
-.roomDesigner {
-    display: flex;
-    flex: 1;
-    min-height: 0;
-    flex-direction: column;
-}
-
-.roomDesignerContent {
-    display: grid;
-    flex: 1;
-    min-height: 0;
-    grid-template-columns: minmax(0, 1fr) 280px;
-    gap: 16px;
-}
-
-.roomDesignerContents {
-    position: absolute;
-    inset: 0;
-    transform-origin: top left;
-}
-
-.roomDesignerCanvas {
-    width: 100%;
-    height: auto;
-    min-height: 0;
-    overflow: hidden;
-}
-
-.templatePicker {
-    min-height: 0;
-    padding: 16px;
-    overflow-y: auto;
-    border: 1px solid var(--app-border);
-    border-radius: 8px;
-    background-color: var(--app-surface);
-}
-
-.templatePicker .doorList {
-    margin-top: 12px;
-}
-
-.canvasBackButton {
-    position: absolute;
-    top: 12px;
-    left: 12px;
-    z-index: 10;
-    display: grid;
-    width: 40px;
-    height: 40px;
-    place-items: center;
-    padding: 0;
-    border: 1px solid var(--app-border);
-    border-radius: 8px;
-    background-color: var(--app-accent);
-    color: var(--app-background);
-    font: inherit;
-    font-size: 24px;
-    line-height: 1;
-    cursor: pointer;
-    box-shadow: 0 2px 8px rgb(0 0 0 / 30%);
-}
-
-.canvasBackButton:hover,
-.canvasBackButton:focus-visible {
-    background-color: var(--palette-green-light);
-}
-
-.roomCreator {
-    position: relative;
-    display: flex;
-    flex: 1;
-    min-height: 0;
-    flex-direction: column;
-}
-
-.creatorHeader {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-
-.creatorHeader .workspaceTitle {
-    margin: 0;
-}
-
-.creatorBackButton {
-    display: grid;
-    flex: 0 0 36px;
-    width: 36px;
-    height: 36px;
-    place-items: center;
-    border: 1px solid var(--app-border);
-    border-radius: 8px;
-    background-color: var(--app-surface);
-    color: var(--app-text);
-    font-size: 20px;
-    line-height: 1;
-    cursor: pointer;
-    box-shadow: 0 2px 8px rgb(0 0 0 / 30%);
-}
-
-.creatorBackButton:hover,
-.creatorBackButton:focus-visible {
-    background-color: var(--palette-green-light);
-}
-
 .roomCreatorContent {
     display: grid;
     flex: 1;
@@ -709,68 +418,4 @@
     width: 100%;
     height: auto;
     min-height: 0;
-}
-
-.shapePicker {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 6px;
-}
-
-.shapePicker button {
-    padding: 8px 4px;
-    text-align: center;
-}
-
-.shapePicker button[aria-pressed="true"] {
-    border-color: var(--palette-blue-medium);
-    background-color: var(--palette-blue-medium);
-}
-
-.roomCompositionPreview {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    touch-action: none;
-}
-
-.roomCompositionShape {
-    fill: var(--app-accent);
-    stroke: var(--app-border);
-    stroke-width: 2;
-    vector-effect: non-scaling-stroke;
-    cursor: grab;
-}
-
-.roomCompositionShapeSelected {
-    stroke: var(--palette-blue-medium);
-    stroke-width: 4;
-}
-
-.roomCompositionLabel {
-    position: absolute;
-    right: 12px;
-    bottom: 12px;
-    padding: 4px 8px;
-    border-radius: 4px;
-    background: var(--app-surface);
-    color: var(--app-text);
-    font-size: 12px;
-    pointer-events: none;
-}
-
-.canonicalWallLayer {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    overflow: visible;
-    pointer-events: none;
-    z-index: 1;
-}
-
-.canonicalWallStroke {
-    fill: none;
-    stroke: var(--app-border);
 }

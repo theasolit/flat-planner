@@ -466,8 +466,11 @@ export function ShapeCompositionForm({
               : "Length (cm)"}
             <input
               className={sharedStyles.dimensionInput}
-              type="text"
+              type={selectedComponent?.shape === "circle" ? "number" : "text"}
               inputMode="decimal"
+              min={selectedComponent?.shape === "circle" ? 1 : undefined}
+              max={selectedComponent?.shape === "circle" ? 360 : undefined}
+              step={selectedComponent?.shape === "circle" ? "any" : undefined}
               value={
                 selectedComponent?.shape === "circle"
                   ? selectedComponent.includedAngle ?? 360

@@ -162,6 +162,8 @@ test("locked flat keeps furniture editable and saves the room and placements", a
   await expect(page.getByLabel("Radius (cm)")).toHaveValue("420");
   const includedAngleInput = page.getByLabel("Included angle (degrees)");
   await expect(includedAngleInput).toHaveValue("90");
+  await expect(includedAngleInput).toHaveAttribute("min", "1");
+  await expect(includedAngleInput).toHaveAttribute("max", "360");
   const initialSectorPath = await page
     .getByTestId("shape-component")
     .last()
@@ -173,6 +175,9 @@ test("locked flat keeps furniture editable and saves the room and placements", a
     initialSectorPath ?? "",
   );
   await includedAngleInput.fill("361");
+  await expect(includedAngleInput).toHaveValue("180");
+  await page.getByLabel("Radius (cm)").fill("200");
+  await expect(page.getByLabel("Radius (cm)")).toHaveValue("200");
   await expect(includedAngleInput).toHaveValue("180");
   await page.getByRole("button", { name: "Remove selected shape" }).click();
   await expect(page.getByTestId("shape-component")).toHaveCount(1);

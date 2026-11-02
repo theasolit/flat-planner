@@ -499,6 +499,32 @@ describe("room geometry", () => {
     expect(getStraightRoomBoundaryEdges(room)).toHaveLength(2);
   });
 
+  it.each([
+    [180, 0.5, 1],
+    [270, 0.75, 2],
+  ])(
+    "preserves partial circle angles of %i degrees",
+    (angle, areaRatio, straightEdgeCount) => {
+    const component: RoomComponent = {
+      id: "partial-sector",
+      shape: "circle",
+      x: 0,
+      y: 0,
+      width: 300,
+      length: 300,
+      includedAngle: angle,
+      rotation: 0,
+    };
+
+    expect(
+      getRoomArea(makeRoom([component])) / (Math.PI * 300 ** 2),
+    ).toBeCloseTo(areaRatio, 2);
+    expect(getStraightRoomBoundaryEdges(makeRoom([component]))).toHaveLength(
+      straightEdgeCount,
+    );
+    },
+  );
+
   it("migrates a legacy side opening to its rectangle edge", () => {
     const room = makeRoom([
       {

@@ -35,6 +35,24 @@
     gap: 8px;
 }
 
+.autoSaveStatus {
+    max-width: 260px;
+    overflow: hidden;
+    color: var(--app-muted);
+    font-size: 12px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.autoSaveStatus[data-error="true"] {
+    color: var(--palette-green-light);
+}
+
+.historyButton {
+    padding-right: 9px;
+    padding-left: 9px;
+}
+
 .fileButton {
     padding: 8px 12px;
     border: 1px solid var(--app-border);
@@ -454,17 +472,26 @@
 
 @media (max-width: 760px) {
     .header {
+        flex-wrap: wrap;
         gap: 8px;
         padding: 10px 12px;
     }
 
     .title {
-        flex: 0 0 auto;
+        flex: 1 0 100%;
         font-size: 18px;
     }
 
     .fileActions {
+        width: 100%;
+        justify-content: space-between;
         gap: 4px;
+    }
+
+    .autoSaveStatus {
+        max-width: none;
+        margin-left: auto;
+        font-size: 11px;
     }
 
     .fileButton,
@@ -472,6 +499,11 @@
         min-height: 38px;
         padding: 7px 8px;
         font-size: 14px;
+    }
+
+    .historyButton {
+        padding-right: 6px;
+        padding-left: 6px;
     }
 
     .editorLayout {

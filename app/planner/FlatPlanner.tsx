@@ -25,10 +25,15 @@ import { useWallThicknessEditor } from "./hooks/useWallThicknessEditor";
 import { useWallOpeningEditor } from "./hooks/useWallOpeningEditor";
 import { useCanvasNavigation } from "./hooks/useCanvasNavigation";
 import {
+  useUndoRedo,
+  type PlannerHistorySnapshot,
+} from "./hooks/useUndoRedo";
+import {
   loadSavedFlat,
   parseFlatData,
   saveFlatFile,
   saveFlatData,
+  serializeFlatData,
 } from "./persistence/persistence";
 import { getFitScale, getFloorPlanBounds } from "./geometry/viewport";
 import type {
@@ -66,6 +71,9 @@ export default function FlatPlanner() {
   } = useCanvasSize(editorMode, selectedRoomId);
 
   const [saveMessage, setSaveMessage] = useState("");
+  const [storageHydrated, setStorageHydrated] = useState(false);
+  const [autoSaveStatus, setAutoSaveStatus] = useState("Loading saved plan…");
+  const lastSavedDataRef = useRef<string | null>(null);
   const furnitureDetailsRef = useRef<HTMLDivElement>(null);
   const [furnitureDetailsPosition, setFurnitureDetailsPosition] = useState<{
     left: number;
@@ -245,17 +253,87 @@ export default function FlatPlanner() {
     furnitureTemplates,
     furniturePlacements,
   };
+  const serializedFlatData = serializeFlatData(flatData);
+
+  function restoreHistorySnapshot(snapshot: PlannerHistorySnapshot) {
+    setRooms(snapshot.rooms);
+    setWallThickness(snapshot.wallThickness);
+    setWallThicknesses(snapshot.wallThicknesses);
+    setWallOpenings(snapshot.wallOpenings);
+    setFurnitureTemplates(snapshot.furnitureTemplates);
+    setFurniturePlacements(snapshot.furniturePlacements);
+    setSelectedRoomId((currentRoomId) =>
+      snapshot.rooms.some((room) => room.id === currentRoomId)
+        ? currentRoomId
+        : null,
+    );
+    setSelectedFurnitureId(null);
+    setSelectedOpeningId(null);
+    setSelectedWallId(null);
+    setFurnitureDetailsPosition(null);
+    setOpeningDetailsPosition(null);
+
+    if (
+      editorMode === "room-designer" &&
+      !snapshot.rooms.some((room) => room.id === selectedRoomId)
+    ) {
+      setEditorMode("flat");
+    }
+  }
+
+  const historySnapshot: PlannerHistorySnapshot = {
+    rooms,
+    wallThickness,
+    wallThicknesses,
+    wallOpenings,
+    furnitureTemplates,
+    furniturePlacements,
+  };
+  const {
+    canUndo,
+    canRedo,
+    undo,
+    redo,
+    reset: resetHistory,
+    beginGroup: beginHistoryGroup,
+    endGroup: endHistoryGroup,
+  } = useUndoRedo({
+    snapshot: historySnapshot,
+    onRestore: restoreHistorySnapshot,
+  });
+  const historyEnabled =
+    editorMode !== "room-creator" && editorMode !== "furniture-creator";
 
   useEffect(() => {
     try {
       const savedFlat = loadSavedFlat();
 
       if (!savedFlat) {
+        lastSavedDataRef.current = null;
+        // The saved baseline must be loaded before autosave can be enabled.
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setAutoSaveStatus("Autosave ready");
+        setStorageHydrated(true);
         return;
       }
 
+      const savedWallOpenings = migrateLegacyWallOpenings(
+        savedFlat.rooms,
+        savedFlat.wallOpenings ?? [],
+      );
+      const loadedFlatData: Flat = {
+        rooms: savedFlat.rooms,
+        selectedRoomId: savedFlat.selectedRoomId,
+        isFlatLocked: savedFlat.isFlatLocked ?? false,
+        wallThickness: savedFlat.wallThickness ?? 10,
+        wallThicknesses: savedFlat.wallThicknesses ?? {},
+        wallOpenings: savedWallOpenings,
+        furnitureTemplates: savedFlat.furnitureTemplates ?? [],
+        furniturePlacements: savedFlat.furniturePlacements ?? [],
+      };
+      lastSavedDataRef.current = serializeFlatData(loadedFlatData);
+
       // Browser storage is only available after hydration.
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setRooms(savedFlat.rooms);
       setIsFlatLocked(savedFlat.isFlatLocked ?? false);
       setFurnitureTemplates(savedFlat.furnitureTemplates ?? []);
@@ -263,20 +341,94 @@ export default function FlatPlanner() {
       setSelectedRoomId(savedFlat.selectedRoomId);
       setWallThickness(savedFlat.wallThickness ?? 10);
       setWallThicknesses(savedFlat.wallThicknesses ?? {});
-      setWallOpenings(
-        migrateLegacyWallOpenings(
-          savedFlat.rooms,
-          savedFlat.wallOpenings ?? [],
-        ),
-      );
+      setWallOpenings(savedWallOpenings);
+      resetHistory({
+        rooms: savedFlat.rooms,
+        wallThickness: savedFlat.wallThickness ?? 10,
+        wallThicknesses: savedFlat.wallThicknesses ?? {},
+        wallOpenings: savedWallOpenings,
+        furnitureTemplates: savedFlat.furnitureTemplates ?? [],
+        furniturePlacements: savedFlat.furniturePlacements ?? [],
+      });
+      setAutoSaveStatus("Saved automatically");
+      setStorageHydrated(true);
     } catch (error) {
       if (!(error instanceof Error)) {
         throw error;
       }
 
       setSaveMessage(`Could not load the saved flat: ${error.message}`);
+      setAutoSaveStatus(`Autosave unavailable: ${error.message}`);
     }
-  }, [setFurniturePlacements, setFurnitureTemplates, setWallOpenings]);
+  }, [
+    resetHistory,
+    setFurniturePlacements,
+    setFurnitureTemplates,
+    setWallOpenings,
+  ]);
+
+  useEffect(() => {
+    if (
+      !storageHydrated ||
+      serializedFlatData === lastSavedDataRef.current
+    ) {
+      return;
+    }
+
+    setAutoSaveStatus("Saving…");
+    const timeoutId = window.setTimeout(() => {
+      try {
+        saveFlatData(parseFlatData(serializedFlatData));
+        lastSavedDataRef.current = serializedFlatData;
+        setAutoSaveStatus("Saved automatically");
+      } catch (error) {
+        if (!(error instanceof Error)) {
+          throw error;
+        }
+
+        setAutoSaveStatus(`Autosave failed: ${error.message}`);
+      }
+    }, 500);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [serializedFlatData, storageHydrated]);
+
+  useEffect(() => {
+    function handleHistoryShortcut(event: KeyboardEvent) {
+      const target = event.target;
+
+      if (
+        !historyEnabled ||
+        !(event.ctrlKey || event.metaKey) ||
+        (target instanceof HTMLElement &&
+          (target.isContentEditable ||
+            target.matches("input, textarea, select")))
+      ) {
+        return;
+      }
+
+      const key = event.key.toLowerCase();
+
+      if (key === "z" && event.shiftKey) {
+        if (canRedo) {
+          event.preventDefault();
+          redo();
+        }
+      } else if (key === "y") {
+        if (canRedo) {
+          event.preventDefault();
+          redo();
+        }
+      } else if (key === "z" && canUndo) {
+        event.preventDefault();
+        undo();
+      }
+    }
+
+    document.addEventListener("keydown", handleHistoryShortcut);
+
+    return () => document.removeEventListener("keydown", handleHistoryShortcut);
+  }, [canRedo, canUndo, historyEnabled, redo, undo]);
 
   useEffect(() => {
     if (!saveMessage) {
@@ -328,7 +480,21 @@ export default function FlatPlanner() {
   ]);
 
   function saveFlat() {
-    saveFlatData(flatData);
+    try {
+      saveFlatData(flatData);
+      lastSavedDataRef.current = serializedFlatData;
+      setStorageHydrated(true);
+      setAutoSaveStatus("Saved automatically");
+    } catch (error) {
+      if (!(error instanceof Error)) {
+        throw error;
+      }
+
+      setAutoSaveStatus(`Save failed: ${error.message}`);
+      setSaveMessage(`Could not save in this browser: ${error.message}`);
+      return;
+    }
+
     setSaveMessage("Saved in this browser");
   }
 
@@ -371,16 +537,26 @@ export default function FlatPlanner() {
 
     try {
       const flat = parseFlatData(await file.text());
+      const importedWallOpenings = migrateLegacyWallOpenings(
+        flat.rooms,
+        flat.wallOpenings ?? [],
+      );
       setRooms(flat.rooms);
       setIsFlatLocked(flat.isFlatLocked ?? false);
       setSelectedRoomId(flat.selectedRoomId);
       setWallThickness(flat.wallThickness ?? 10);
       setWallThicknesses(flat.wallThicknesses ?? {});
-      setWallOpenings(
-        migrateLegacyWallOpenings(flat.rooms, flat.wallOpenings ?? []),
-      );
+      setWallOpenings(importedWallOpenings);
       setFurnitureTemplates(flat.furnitureTemplates ?? []);
       setFurniturePlacements(flat.furniturePlacements ?? []);
+      resetHistory({
+        rooms: flat.rooms,
+        wallThickness: flat.wallThickness ?? 10,
+        wallThicknesses: flat.wallThicknesses ?? {},
+        wallOpenings: importedWallOpenings,
+        furnitureTemplates: flat.furnitureTemplates ?? [],
+        furniturePlacements: flat.furniturePlacements ?? [],
+      });
       setSelectedFurnitureId(null);
       setSelectedOpeningId(null);
       setOpeningDetailsPosition(null);
@@ -511,6 +687,24 @@ export default function FlatPlanner() {
         <h1 className={styles.title}>Flat planner</h1>
         <div className={styles.fileActions}>
           <button
+            className={`${styles.fileButton} ${styles.historyButton}`}
+            type="button"
+            onClick={undo}
+            disabled={!historyEnabled || !canUndo}
+            title="Undo (Ctrl+Z)"
+          >
+            Undo
+          </button>
+          <button
+            className={`${styles.fileButton} ${styles.historyButton}`}
+            type="button"
+            onClick={redo}
+            disabled={!historyEnabled || !canRedo}
+            title="Redo (Ctrl+Y or Ctrl+Shift+Z)"
+          >
+            Redo
+          </button>
+          <button
             className={styles.fileButton}
             type="button"
             onClick={saveFlatToFile}
@@ -534,13 +728,30 @@ export default function FlatPlanner() {
             onChange={importFlat}
           />
           <button className={styles.saveButton} onClick={saveFlat}>
-            Save
+            Save now
           </button>
         </div>
+        <span
+          className={styles.autoSaveStatus}
+          role="status"
+          aria-live="polite"
+          data-error={
+            autoSaveStatus.includes("failed") ||
+            autoSaveStatus.includes("unavailable")
+          }
+          title={autoSaveStatus}
+        >
+          {autoSaveStatus}
+        </span>
       </header>
 
       {saveMessage && (
-        <div className={styles.toast} role="status" aria-live="polite">
+        <div
+          className={styles.toast}
+          data-testid="save-toast"
+          role="status"
+          aria-live="polite"
+        >
           {saveMessage}
         </div>
       )}
@@ -640,9 +851,15 @@ export default function FlatPlanner() {
                   setSelectedFurnitureId(null);
                   setMobilePanel("details");
                 },
-                onOpeningPointerDown: startOpeningDrag,
+                onOpeningPointerDown: (event, opening) => {
+                  beginHistoryGroup();
+                  startOpeningDrag(event, opening);
+                },
                 onOpeningPointerMove: moveOpening,
-                onOpeningPointerUp: stopOpeningDrag,
+                onOpeningPointerUp: (event) => {
+                  stopOpeningDrag(event);
+                  endHistoryGroup();
+                },
                 onRoomClick: (room) => {
                   setSelectedRoomId(room.id);
                   setManualRoomDesignerScale(null);
@@ -666,9 +883,15 @@ export default function FlatPlanner() {
                   setEditorMode("room-designer");
                   setMobilePanel("canvas");
                 },
-                onRoomPointerDown: startRoomDrag,
+                onRoomPointerDown: (event, room) => {
+                  beginHistoryGroup();
+                  startRoomDrag(event, room);
+                },
                 onRoomPointerMove: moveRoom,
-                onRoomPointerUp: stopRoomDrag,
+                onRoomPointerUp: (event) => {
+                  stopRoomDrag(event);
+                  endHistoryGroup();
+                },
               }}
             />
           ) : (
@@ -715,12 +938,24 @@ export default function FlatPlanner() {
                           furniturePlacements,
                           furnitureTemplates,
                           selectedFurnitureId,
-                          onOpeningPointerDown: startOpeningDrag,
+                          onOpeningPointerDown: (event, opening) => {
+                            beginHistoryGroup();
+                            startOpeningDrag(event, opening);
+                          },
                           onOpeningPointerMove: moveOpening,
-                          onOpeningPointerUp: stopOpeningDrag,
-                          onFurniturePointerDown: startFurnitureDrag,
+                          onOpeningPointerUp: (event) => {
+                            stopOpeningDrag(event);
+                            endHistoryGroup();
+                          },
+                          onFurniturePointerDown: (event, placement) => {
+                            beginHistoryGroup();
+                            startFurnitureDrag(event, placement);
+                          },
                           onFurniturePointerMove: moveFurniture,
-                          onFurniturePointerUp: stopFurnitureDrag,
+                          onFurniturePointerUp: (event) => {
+                            stopFurnitureDrag(event);
+                            endHistoryGroup();
+                          },
                         }
                       : null
                   }

@@ -407,7 +407,7 @@ test("locked flat keeps furniture editable and saves the room and placements", a
   await page
     .getByRole("button", { name: "Delete furniture template Sofa" })
     .click();
-  await expect(page.getByRole("status")).toContainText(
+  await expect(page.getByTestId("save-toast")).toContainText(
     "Unlock every placed piece before deleting its furniture template.",
   );
   await expect(sofaTemplate).toBeVisible();
@@ -420,13 +420,13 @@ test("locked flat keeps furniture editable and saves the room and placements", a
   await expect(
     page.getByRole("heading", { name: "Sofa", exact: true }),
   ).toBeVisible();
-  await page.getByRole("button", { name: "Save", exact: true }).click();
-  await expect(page.getByRole("status")).toContainText("Saved in this browser");
+  await page.getByRole("button", { name: "Save now", exact: true }).click();
+  await expect(page.getByTestId("save-toast")).toContainText("Saved in this browser");
   const downloadPromise = page.waitForEvent("download");
   await page.getByRole("button", { name: "Save file" }).click();
   const download = await downloadPromise;
   expect(download.suggestedFilename()).toBe("custom-layout.json");
-  await expect(page.getByRole("status")).toContainText(
+  await expect(page.getByTestId("save-toast")).toContainText(
     "Downloaded custom-layout.json",
   );
   const exportPath = await download.path();
@@ -448,6 +448,8 @@ test("locked flat keeps furniture editable and saves the room and placements", a
   });
 
   await page.reload();
+  await expect(page.getByRole("button", { name: "Undo" })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Redo" })).toBeDisabled();
   await expect(
     page.getByRole("button", { name: "Unlock flat" }),
   ).toHaveAttribute("aria-pressed", "true");
@@ -495,6 +497,8 @@ test("locked flat keeps furniture editable and saves the room and placements", a
   await expect(
     page.getByRole("button", { name: "Unlock flat" }),
   ).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("button", { name: "Undo" })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Redo" })).toBeDisabled();
   await page
     .getByRole("button", { name: "Living room", exact: true })
     .click();
@@ -509,6 +513,112 @@ test("locked flat keeps furniture editable and saves the room and placements", a
       ),
     )
     .toBe(initialFirstLeft);
+});
+
+test("undo and redo restore planner edits and support keyboard shortcuts", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page.evaluate(() => localStorage.clear());
+  await page.reload();
+
+  const undoButton = page.getByRole("button", { name: "Undo" });
+  const redoButton = page.getByRole("button", { name: "Redo" });
+  await expect(undoButton).toBeDisabled();
+  await expect(redoButton).toBeDisabled();
+
+  await page.getByRole("button", { name: "Add room" }).click();
+  await expect(undoButton).toBeDisabled();
+  await page.getByLabel("Room name").fill("History room");
+  await page
+    .getByTestId("shape-composition-creator")
+    .getByRole("button", { name: "Save" })
+    .click();
+  await expect(
+    page.getByRole("button", { name: "History room", exact: true }),
+  ).toBeVisible();
+  await expect(undoButton).toBeEnabled();
+
+  await undoButton.click();
+  await expect(
+    page.getByRole("button", { name: "History room", exact: true }),
+  ).toHaveCount(0);
+  await expect(redoButton).toBeEnabled();
+  await redoButton.click();
+  await expect(
+    page.getByRole("button", { name: "History room", exact: true }),
+  ).toBeVisible();
+
+  const roomShape = page.locator("[data-room-id]").first();
+  const initialRoomLeft = await roomShape.evaluate(
+    (element) => (element as HTMLElement).style.left,
+  );
+  const roomBounds = await roomShape.boundingBox();
+  expect(roomBounds).not.toBeNull();
+  if (!roomBounds) {
+    throw new Error("The history room is not visible on the floor plan.");
+  }
+  const dragStartX = roomBounds.x + roomBounds.width / 2;
+  const dragStartY = roomBounds.y + roomBounds.height / 2;
+  await page.mouse.move(dragStartX, dragStartY);
+  await page.mouse.down();
+  await page.mouse.move(dragStartX + 16, dragStartY + 10, { steps: 3 });
+  await page.waitForTimeout(500);
+  await page.mouse.move(dragStartX + 40, dragStartY + 24, { steps: 3 });
+  await page.mouse.up();
+  const draggedRoomLeft = await roomShape.evaluate(
+    (element) => (element as HTMLElement).style.left,
+  );
+  expect(draggedRoomLeft).not.toBe(initialRoomLeft);
+  await undoButton.click();
+  await expect(roomShape).toHaveCSS("left", initialRoomLeft);
+  await redoButton.click();
+  await expect(roomShape).toHaveCSS("left", draggedRoomLeft);
+
+  await page.getByRole("button", { name: "History room", exact: true }).click();
+  await page.getByRole("button", { name: "Add door" }).click();
+  await expect(page.getByRole("button", { name: "Drag doorway" })).toHaveCount(1);
+  await page.keyboard.press("Control+z");
+  await expect(page.getByRole("button", { name: "Drag doorway" })).toHaveCount(0);
+  await expect(redoButton).toBeEnabled();
+  await page.keyboard.press("Control+Shift+z");
+  await expect(page.getByRole("button", { name: "Drag doorway" })).toHaveCount(1);
+  await page.keyboard.press("Control+z");
+  await expect(page.getByRole("button", { name: "Drag doorway" })).toHaveCount(0);
+
+  await page.getByRole("button", { name: "Add window" }).click();
+  await expect(page.getByRole("button", { name: "Drag window" })).toHaveCount(1);
+  await expect(redoButton).toBeDisabled();
+  await page.keyboard.press("Control+y");
+  await expect(page.getByRole("button", { name: "Drag doorway" })).toHaveCount(0);
+});
+
+test("autosave stores edits and restores them after reload", async ({ page }) => {
+  await page.goto("/");
+  await page.evaluate(() => localStorage.clear());
+  await page.reload();
+
+  await page.getByRole("button", { name: "Add room" }).click();
+  await page.getByLabel("Room name").fill("Autosaved room");
+  await page
+    .getByTestId("shape-composition-creator")
+    .getByRole("button", { name: "Save" })
+    .click();
+
+  await expect(page.getByRole("status")).toContainText("Saved automatically");
+  await expect
+    .poll(() =>
+      page.evaluate(() => {
+        const saved = localStorage.getItem("flat-planner-v2");
+        return saved ? JSON.parse(saved).rooms[0]?.name : null;
+      }),
+    )
+    .toBe("Autosaved room");
+
+  await page.reload();
+  await expect(
+    page.getByRole("button", { name: "Autosaved room", exact: true }),
+  ).toBeVisible();
 });
 
 test("file save picker writes the flat under the selected filename", async ({
@@ -551,7 +661,7 @@ test("file save picker writes the flat under the selected filename", async ({
   await page.reload();
 
   await page.getByRole("button", { name: "Save file" }).click();
-  await expect(page.getByRole("status")).toContainText("Saved my-layout.json");
+  await expect(page.getByTestId("save-toast")).toContainText("Saved my-layout.json");
   const savedFile = await page.evaluate(() => {
     const windowWithSavedFile = window as Window & {
       savedFile?: { options: unknown; contents: string; closed: boolean };
@@ -848,6 +958,11 @@ test("phone layout exposes planner panels and supports canvas gestures", async (
   await page.getByRole("button", { name: "Add room" }).click();
   await expect(page.getByRole("heading", { name: "Room Creator" })).toBeVisible();
   await page.setViewportSize({ width: 320, height: 568 });
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth > window.innerWidth,
+    ),
+  ).toBe(false);
   await page.getByLabel("Room name").fill("Phone room");
   for (const label of ["Width (cm)", "Length (cm)"]) {
     const dimension = page.getByLabel(label);

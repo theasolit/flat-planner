@@ -7,6 +7,7 @@ type Props = {
   templates: FurnitureTemplate[];
   onAddFurniture: (template: FurnitureTemplate) => void;
   onCreateTemplate: () => void;
+  onEditTemplate: (template: FurnitureTemplate) => void;
   onDeleteTemplate: (template: FurnitureTemplate) => void;
 };
 
@@ -15,6 +16,7 @@ export function FurnitureTemplatePicker({
   templates,
   onAddFurniture,
   onCreateTemplate,
+  onEditTemplate,
   onDeleteTemplate,
 }: Props) {
   return (
@@ -56,6 +58,17 @@ export function FurnitureTemplatePicker({
                   }
                 >
                   {template.name} — {template.width} × {template.length} cm
+                </button>
+                <button
+                  className={sharedStyles.deleteOpeningButton}
+                  type="button"
+                  aria-label={`Edit furniture template ${template.name}`}
+                  title={`Edit ${template.name} template`}
+                  onClick={() => onEditTemplate(template)}
+                >
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="m3 17.25 0 3.75h3.75L19.81 7.94a2.12 2.12 0 0 0-3-3L3 17.25ZM14.5 7.5l2 2" />
+                  </svg>
                 </button>
                 <button
                   className={sharedStyles.deleteOpeningButton}

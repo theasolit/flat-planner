@@ -684,6 +684,86 @@ test("file save picker writes the flat under the selected filename", async ({
   });
 });
 
+test("editing a furniture template updates its existing placements", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page.evaluate(() => localStorage.clear());
+  await page.reload();
+
+  await page.getByRole("button", { name: "Add room" }).click();
+  await page.getByLabel("Room name").fill("Studio");
+  await page
+    .getByTestId("shape-composition-creator")
+    .getByRole("button", { name: "Save" })
+    .click();
+  await page.getByRole("button", { name: "Studio", exact: true }).click();
+
+  await page.getByRole("button", { name: "Create furniture template" }).click();
+  await page.getByLabel("Template Name").fill("Work table");
+  await page
+    .getByTestId("shape-composition-creator")
+    .getByRole("button", { name: "Save" })
+    .click();
+  await page.getByRole("button", { name: "Studio", exact: true }).click();
+
+  const templateButton = page.getByRole("button", {
+    name: "Work table — 100 × 60 cm",
+  });
+  await templateButton.click();
+  await templateButton.click();
+
+  const furniturePlacements = page
+    .getByTestId("room-designer-canvas")
+    .locator("[data-furniture-placement-id]");
+  await expect(furniturePlacements).toHaveCount(2);
+  const originalPositions = await Promise.all(
+    (await furniturePlacements.all()).map((placement) =>
+      placement.evaluate((element) => {
+        const { left, top } = (element as HTMLElement).style;
+        return { left, top };
+      }),
+    ),
+  );
+
+  await page
+    .getByRole("button", { name: "Edit furniture template Work table" })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "Edit furniture template" }),
+  ).toBeVisible();
+  await expect(page.getByLabel("Template Name")).toHaveValue("Work table");
+  await page.getByTestId("shape-component").first().click();
+  await expect(page.getByLabel("Width (cm)")).toHaveValue("100");
+  await expect(page.getByLabel("Length (cm)")).toHaveValue("60");
+  await page.getByLabel("Template Name").fill("Updated table");
+  await page.getByLabel("Width (cm)").fill("140");
+  await page.getByLabel("Length (cm)").fill("80");
+  await page
+    .getByTestId("shape-composition-creator")
+    .getByRole("button", { name: "Save changes" })
+    .click();
+
+  await expect(
+    page.getByRole("button", { name: "Updated table — 140 × 80 cm" }),
+  ).toBeVisible();
+  await expect(furniturePlacements).toHaveCount(2);
+  for (const [index, placement] of (await furniturePlacements.all()).entries()) {
+    await expect(placement.locator('svg[role="img"]')).toHaveAttribute(
+      "aria-label",
+      "Updated table",
+    );
+    await expect
+      .poll(() =>
+        placement.evaluate((element) => {
+          const { left, top } = (element as HTMLElement).style;
+          return { left, top };
+        }),
+      )
+      .toEqual(originalPositions[index]);
+  }
+});
+
 test("furniture hit targets and labels follow the rendered shape", async ({
   page,
 }) => {

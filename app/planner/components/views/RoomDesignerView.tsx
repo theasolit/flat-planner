@@ -27,6 +27,7 @@ type Props = {
   onBack: () => void;
   onAddFurniture: ComponentProps<typeof FurnitureTemplatePicker>["onAddFurniture"];
   onCreateTemplate: () => void;
+  onEditTemplate: (template: FurnitureTemplate) => void;
   onDeleteTemplate: (template: FurnitureTemplate) => void;
   onCanvasClick: (target: EventTarget | null) => void;
 };
@@ -44,6 +45,7 @@ export default function RoomDesignerView({
   onBack,
   onAddFurniture,
   onCreateTemplate,
+  onEditTemplate,
   onDeleteTemplate,
   onCanvasClick,
 }: Props) {
@@ -99,6 +101,7 @@ export default function RoomDesignerView({
             templates={templates}
             onAddFurniture={onAddFurniture}
             onCreateTemplate={onCreateTemplate}
+            onEditTemplate={onEditTemplate}
             onDeleteTemplate={onDeleteTemplate}
           />
         </div>

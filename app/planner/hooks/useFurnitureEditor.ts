@@ -43,6 +43,9 @@ export function useFurnitureEditor({
   const [selectedFurnitureId, setSelectedFurnitureId] = useState<string | null>(null);
   const [furnitureDrag, setFurnitureDrag] = useState<FurnitureDrag | null>(null);
   const [furnitureName, setFurnitureName] = useState("");
+  const [editingFurnitureTemplateId, setEditingFurnitureTemplateId] = useState<
+    string | null
+  >(null);
 
   const selectedFurniturePlacement = furniturePlacements.find(
     (placement) =>
@@ -55,8 +58,23 @@ export function useFurnitureEditor({
           template.id === selectedFurniturePlacement.templateId,
       )
     : undefined;
+  const editingFurnitureTemplate = furnitureTemplates.find(
+    (template) => template.id === editingFurnitureTemplateId,
+  );
 
-  function addFurnitureTemplate(
+  function editFurnitureTemplate(template: FurnitureTemplate) {
+    setEditingFurnitureTemplateId(template.id);
+    setFurnitureName(template.name);
+    setEditorMode("furniture-creator");
+  }
+
+  function cancelFurnitureTemplateEdit() {
+    setEditingFurnitureTemplateId(null);
+    setFurnitureName("");
+    setEditorMode("room-designer");
+  }
+
+  function saveFurnitureTemplate(
     name: string,
     width: number,
     length: number,
@@ -75,8 +93,17 @@ export function useFurnitureEditor({
       return;
     }
 
+    const editingTemplateId = editingFurnitureTemplateId;
+    if (
+      editingTemplateId !== null &&
+      !furnitureTemplates.some((template) => template.id === editingTemplateId)
+    ) {
+      onValidationMessage("That furniture template is no longer available.");
+      return;
+    }
+
     const template: FurnitureTemplate = {
-      id: createId(),
+      id: editingTemplateId ?? createId(),
       name: trimmedName,
       shape:
         components.length === 1
@@ -87,9 +114,19 @@ export function useFurnitureEditor({
       components,
     };
 
-    setFurnitureTemplates((current) => [...current, template]);
+    if (editingTemplateId === null) {
+      setFurnitureTemplates((current) => [...current, template]);
+    } else {
+      setFurnitureTemplates((current) =>
+        current.map((item) => (item.id === editingTemplateId ? template : item)),
+      );
+    }
+
+    setEditorMode(
+      editingTemplateId === null && !isFlatLocked ? "flat" : "room-designer",
+    );
+    setEditingFurnitureTemplateId(null);
     setFurnitureName("");
-    setEditorMode(isFlatLocked ? "room-designer" : "flat");
   }
 
   function addFurnitureToRoom(template: FurnitureTemplate) {
@@ -306,9 +343,12 @@ export function useFurnitureEditor({
     setSelectedFurnitureId,
     selectedFurniturePlacement,
     selectedFurnitureTemplate,
+    editingFurnitureTemplate,
     furnitureName,
     setFurnitureName,
-    addFurnitureTemplate,
+    editFurnitureTemplate,
+    cancelFurnitureTemplateEdit,
+    saveFurnitureTemplate,
     addFurnitureToRoom,
     updateSelectedFurniture,
     setFurniturePlacementLocked,

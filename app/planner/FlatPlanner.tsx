@@ -11,6 +11,7 @@ import { ShapeCompositionForm } from "./components/forms/ShapeCompositionForm";
 import FlatPlanView from "./components/views/FlatPlanView";
 import RoomListPanel from "./components/panels/RoomListPanel";
 import {
+  getFurnitureTemplateComponents,
   getCanonicalWallSegments,
   getRoomWallBounds,
   migrateLegacyWallOpenings,
@@ -149,9 +150,12 @@ export default function FlatPlanner() {
     setSelectedFurnitureId,
     selectedFurniturePlacement,
     selectedFurnitureTemplate,
+    editingFurnitureTemplate,
     furnitureName,
     setFurnitureName,
-    addFurnitureTemplate,
+    editFurnitureTemplate,
+    cancelFurnitureTemplateEdit,
+    saveFurnitureTemplate,
     addFurnitureToRoom,
     updateSelectedFurniture,
     setFurniturePlacementLocked,
@@ -974,6 +978,7 @@ export default function FlatPlanner() {
                   onCreateTemplate={() =>
                     setEditorMode("furniture-creator")
                   }
+                  onEditTemplate={editFurnitureTemplate}
                   onDeleteTemplate={(template) =>
                     removeFurnitureTemplate(template.id)
                   }
@@ -1011,30 +1016,37 @@ export default function FlatPlanner() {
 
               {editorMode === "furniture-creator" && (
                 <ShapeCompositionForm
-                  key="new-furniture"
+                  key={editingFurnitureTemplate?.id ?? "new-furniture"}
                   name={furnitureName}
-                  title="Furniture Creator"
-                  nameLabel="Template Name"
-                  previewName="New furniture"
-                  saveLabel="Save"
-                  newShapeWidth={100}
-                  newShapeLength={60}
-                  initialComponents={[
-                    {
-                      id: "furniture-draft-base",
-                      shape: "rectangle",
-                      x: 0,
-                      y: 0,
-                      width: 100,
-                      length: 60,
-                      rotation: 0,
-                    },
-                  ]}
-                  onBack={() => setEditorMode("room-designer")}
-                  onNameChange={setFurnitureName}
-                  onSave={(name, width, length, components) =>
-                    addFurnitureTemplate(name, width, length, components)
+                  title={
+                    editingFurnitureTemplate
+                      ? "Edit furniture template"
+                      : "Furniture Creator"
                   }
+                  isEditing={editingFurnitureTemplate !== undefined}
+                  nameLabel="Template Name"
+                  previewName={editingFurnitureTemplate?.name ?? "New furniture"}
+                  saveLabel={editingFurnitureTemplate ? "Save changes" : "Save"}
+                  newShapeWidth={editingFurnitureTemplate?.width ?? 100}
+                  newShapeLength={editingFurnitureTemplate?.length ?? 60}
+                  initialComponents={
+                    editingFurnitureTemplate
+                      ? getFurnitureTemplateComponents(editingFurnitureTemplate)
+                      : [
+                          {
+                            id: "furniture-draft-base",
+                            shape: "rectangle",
+                            x: 0,
+                            y: 0,
+                            width: 100,
+                            length: 60,
+                            rotation: 0,
+                          },
+                        ]
+                  }
+                  onBack={cancelFurnitureTemplateEdit}
+                  onNameChange={setFurnitureName}
+                  onSave={saveFurnitureTemplate}
                 />
               )}
             </>

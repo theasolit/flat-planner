@@ -8,7 +8,7 @@ Open the app at [the Flat Planner website](https://theasolit.github.io/flat-plan
 
 1. **Create rooms.** Use **Add room**, give the room a name and dimensions, then build its outline from rectangles, right triangles, and circular sectors. Set each sector's radius and included angle. Shapes can be rotated, mirrored, and removed while editing.
 2. **Arrange the floor plan.** Select a room to edit its details and position it in the overall plan. Add doors and windows to room walls, adjust wall thickness, and use the zoom controls or **Fit to view** to navigate the plan.
-3. **Try furniture layouts.** In a room, create furniture templates and add them to the plan. Arrange placements in the room and lock individual pieces when you want to keep them in place.
+3. **Try furniture layouts.** In a room, create furniture templates, edit them from the template list, and add them to the plan. Changes to a template also update its existing placements. Arrange placements in the room and lock individual pieces when you want to keep them in place.
 4. **Save or transfer your plan.** Your plan is automatically saved in this browser as you work. Use **Save now** to save immediately, **Save file** to choose a filename and save location for a JSON copy, or **Import** to load a previously saved plan.
 
 Use **Undo** and **Redo** in the header to recover recent layout edits, or use **Ctrl+Z** / **Ctrl+Y** (on Mac, **Command+Z** / **Command+Y**). Consecutive edits and drags are grouped into a single history step. History is kept in memory and resets when you import a plan or reload the page.

@@ -1,5 +1,6 @@
 import type {
   Flat,
+  FurnitureCategory,
   FurniturePlacement,
   FurnitureTemplate,
   Room,
@@ -76,7 +77,23 @@ function isFurnitureTemplate(value: unknown): value is FurnitureTemplate {
     (value.components === undefined ||
       (Array.isArray(value.components) &&
         value.components.length > 0 &&
-        value.components.every(isRoomComponent)))
+        value.components.every(isRoomComponent))) &&
+    (value.roomIds === undefined ||
+      (Array.isArray(value.roomIds) &&
+        value.roomIds.every((roomId) => Number.isInteger(roomId)))) &&
+    (value.categoryIds === undefined ||
+      (Array.isArray(value.categoryIds) &&
+        value.categoryIds.every((categoryId) => typeof categoryId === "string")))
+  );
+}
+
+function isFurnitureCategory(value: unknown): value is FurnitureCategory {
+  return (
+    isRecord(value) &&
+    typeof value.id === "string" &&
+    value.id.length > 0 &&
+    typeof value.name === "string" &&
+    value.name.trim().length > 0
   );
 }
 
@@ -125,28 +142,59 @@ function isNumericRecord(value: unknown): value is Record<string, number> {
 }
 
 function isFlat(value: unknown): value is Flat {
-  return (
-    isRecord(value) &&
-    Array.isArray(value.rooms) &&
-    value.rooms.every(isRoom) &&
-    (value.selectedRoomId === null ||
-      (Number.isInteger(value.selectedRoomId) &&
-        value.rooms.some((room) => room.id === value.selectedRoomId))) &&
-    (value.isFlatLocked === undefined ||
-      typeof value.isFlatLocked === "boolean") &&
-    (value.wallThickness === undefined ||
-      (isFiniteNumber(value.wallThickness) && value.wallThickness > 0)) &&
-    (value.wallThicknesses === undefined ||
-      isNumericRecord(value.wallThicknesses)) &&
-    (value.wallOpenings === undefined ||
-      (Array.isArray(value.wallOpenings) &&
-        value.wallOpenings.every(isWallOpening))) &&
-    (value.furnitureTemplates === undefined ||
-      (Array.isArray(value.furnitureTemplates) &&
-        value.furnitureTemplates.every(isFurnitureTemplate))) &&
-    (value.furniturePlacements === undefined ||
-      (Array.isArray(value.furniturePlacements) &&
-        value.furniturePlacements.every(isFurniturePlacement)))
+  if (
+    !isRecord(value) ||
+    !Array.isArray(value.rooms) ||
+    !value.rooms.every(isRoom) ||
+    (value.selectedRoomId !== null &&
+      (!Number.isInteger(value.selectedRoomId) ||
+        !value.rooms.some((room) => room.id === value.selectedRoomId))) ||
+    (value.isFlatLocked !== undefined &&
+      typeof value.isFlatLocked !== "boolean") ||
+    (value.wallThickness !== undefined &&
+      (!isFiniteNumber(value.wallThickness) || value.wallThickness <= 0)) ||
+    (value.wallThicknesses !== undefined &&
+      !isNumericRecord(value.wallThicknesses)) ||
+    (value.wallOpenings !== undefined &&
+      (!Array.isArray(value.wallOpenings) ||
+        !value.wallOpenings.every(isWallOpening))) ||
+    (value.furnitureCategories !== undefined &&
+      (!Array.isArray(value.furnitureCategories) ||
+        !value.furnitureCategories.every(isFurnitureCategory))) ||
+    (value.furnitureTemplates !== undefined &&
+      (!Array.isArray(value.furnitureTemplates) ||
+        !value.furnitureTemplates.every(isFurnitureTemplate))) ||
+    (value.furniturePlacements !== undefined &&
+      (!Array.isArray(value.furniturePlacements) ||
+        !value.furniturePlacements.every(isFurniturePlacement)))
+  ) {
+    return false;
+  }
+
+  const rooms = value.rooms.filter(isRoom);
+  const categories =
+    value.furnitureCategories?.filter(isFurnitureCategory) ?? [];
+  const templates =
+    value.furnitureTemplates?.filter(isFurnitureTemplate) ?? [];
+  const roomIds = new Set(rooms.map((room) => room.id));
+  const categoryIds = new Set(categories.map((category) => category.id));
+  const categoryNames = new Set(
+    categories.map((category) => category.name.trim().toLowerCase()),
+  );
+
+  if (
+    categoryIds.size !== categories.length ||
+    categoryNames.size !== categories.length
+  ) {
+    return false;
+  }
+
+  return templates.every(
+    (template) =>
+      (template.roomIds ?? []).every((roomId) => roomIds.has(roomId)) &&
+      (template.categoryIds ?? []).every((categoryId) =>
+        categoryIds.has(categoryId),
+      ),
   );
 }
 

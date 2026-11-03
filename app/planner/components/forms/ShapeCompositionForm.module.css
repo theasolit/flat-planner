@@ -112,6 +112,136 @@
     min-height: 58px;
 }
 
+.templateOrganization {
+    display: grid;
+    grid-column: 1 / -1;
+    gap: 8px;
+}
+
+.assignmentGroup {
+    position: relative;
+    display: grid;
+    gap: 4px;
+    margin: 0;
+    min-width: 0;
+}
+
+.assignmentLabel {
+    font-size: 13px;
+}
+
+.assignmentSelect {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    width: 100%;
+    min-width: 0;
+    min-height: 32px;
+    padding: 4px 8px;
+    border: 1px solid var(--app-border);
+    border-radius: 6px;
+    background: var(--app-surface);
+    color: var(--app-text);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.assignmentSelect:hover,
+.assignmentSelect:focus-visible,
+.assignmentSelect[aria-expanded="true"] {
+    background: var(--app-canvas);
+}
+
+.assignmentSelect > span:first-child {
+    min-width: 0;
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.assignmentSelect::after {
+    flex: 0 0 auto;
+    color: var(--app-muted);
+    content: "⌄";
+}
+
+.assignmentOptions {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    z-index: 1;
+    display: grid;
+    gap: 6px;
+    width: 100%;
+    max-height: 180px;
+    padding: 8px;
+    overflow-y: auto;
+    border: 1px solid var(--app-border);
+    border-radius: 6px;
+    background: var(--app-surface);
+    box-shadow: 0 4px 12px rgb(0 0 0 / 30%);
+}
+
+.assignmentGroup label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 28px;
+    padding: 2px 4px;
+    overflow-wrap: anywhere;
+    cursor: pointer;
+}
+
+.assignmentGroup input[type="checkbox"] {
+    flex: 0 0 auto;
+    display: grid;
+    width: 16px;
+    height: 16px;
+    margin: 0;
+    appearance: none;
+    place-content: center;
+    border: 1px solid var(--palette-teal-medium);
+    border-radius: 3px;
+    background-color: var(--palette-teal-dark);
+    cursor: pointer;
+}
+
+.assignmentGroup input[type="checkbox"]:hover:not(:checked) {
+    border-color: var(--palette-teal-light);
+    background-color: var(--palette-teal-medium);
+}
+
+.assignmentGroup input[type="checkbox"]::after {
+    width: 12px;
+    height: 10px;
+    transform: scale(0);
+    background: var(--palette-teal-dark);
+    clip-path: polygon(0 45%, 15% 30%, 38% 54%, 83% 5%, 100% 22%, 41% 95%);
+    content: "";
+}
+
+.assignmentGroup input[type="checkbox"]:checked {
+    border-color: var(--palette-green-light);
+    background-color: var(--palette-green-light);
+}
+
+.assignmentGroup input[type="checkbox"]:checked:hover {
+    border-color: var(--palette-green-very-light);
+    background-color: var(--palette-green-very-light);
+}
+
+.assignmentGroup input[type="checkbox"]:checked::after {
+    transform: scale(1);
+}
+
+.assignmentGroup input[type="checkbox"]:focus-visible {
+    outline: 2px solid var(--palette-teal-very-light);
+    outline-offset: 3px;
+}
+
 .shapeActions {
     display: grid;
     grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -180,6 +310,7 @@
     .creatorFields > label:first-child,
     .creatorFields > .shapePicker,
     .creatorFields > .shapeActions,
+    .creatorFields > .templateOrganization,
     .creatorFields > p {
         grid-column: 1 / -1;
     }

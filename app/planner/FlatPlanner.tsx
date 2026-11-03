@@ -37,9 +37,11 @@ import {
   serializeFlatData,
 } from "./persistence/persistence";
 import { getFitScale, getFloorPlanBounds } from "./geometry/viewport";
+import { createId } from "./utils/createId";
 import type {
   EditorMode,
   Flat,
+  FurnitureCategory,
   Pair,
   PlanBounds,
   Room,
@@ -61,6 +63,9 @@ export default function FlatPlanner() {
   const [roomDesignerOffset, setRoomDesignerOffset] = useState({ x: 0, y: 0 });
 
   const [rooms, setRooms] = useState<Room[]>([]);
+  const [furnitureCategories, setFurnitureCategories] = useState<
+    FurnitureCategory[]
+  >([]);
   const [selectedRoomId, setSelectedRoomId] = useState<number | null>(null);
   const [roomDrag, setRoomDrag] = useState<RoomDrag | null>(null);
   const selectedRoom = rooms.find((room) => room.id === selectedRoomId);
@@ -254,6 +259,7 @@ export default function FlatPlanner() {
     wallThickness,
     wallThicknesses,
     wallOpenings,
+    furnitureCategories,
     furnitureTemplates,
     furniturePlacements,
   };
@@ -264,6 +270,7 @@ export default function FlatPlanner() {
     setWallThickness(snapshot.wallThickness);
     setWallThicknesses(snapshot.wallThicknesses);
     setWallOpenings(snapshot.wallOpenings);
+    setFurnitureCategories(snapshot.furnitureCategories);
     setFurnitureTemplates(snapshot.furnitureTemplates);
     setFurniturePlacements(snapshot.furniturePlacements);
     setSelectedRoomId((currentRoomId) =>
@@ -290,6 +297,7 @@ export default function FlatPlanner() {
     wallThickness,
     wallThicknesses,
     wallOpenings,
+    furnitureCategories,
     furnitureTemplates,
     furniturePlacements,
   };
@@ -332,6 +340,7 @@ export default function FlatPlanner() {
         wallThickness: savedFlat.wallThickness ?? 10,
         wallThicknesses: savedFlat.wallThicknesses ?? {},
         wallOpenings: savedWallOpenings,
+        furnitureCategories: savedFlat.furnitureCategories ?? [],
         furnitureTemplates: savedFlat.furnitureTemplates ?? [],
         furniturePlacements: savedFlat.furniturePlacements ?? [],
       };
@@ -346,11 +355,13 @@ export default function FlatPlanner() {
       setWallThickness(savedFlat.wallThickness ?? 10);
       setWallThicknesses(savedFlat.wallThicknesses ?? {});
       setWallOpenings(savedWallOpenings);
+      setFurnitureCategories(savedFlat.furnitureCategories ?? []);
       resetHistory({
         rooms: savedFlat.rooms,
         wallThickness: savedFlat.wallThickness ?? 10,
         wallThicknesses: savedFlat.wallThicknesses ?? {},
         wallOpenings: savedWallOpenings,
+        furnitureCategories: savedFlat.furnitureCategories ?? [],
         furnitureTemplates: savedFlat.furnitureTemplates ?? [],
         furniturePlacements: savedFlat.furniturePlacements ?? [],
       });
@@ -367,6 +378,7 @@ export default function FlatPlanner() {
   }, [
     resetHistory,
     setFurniturePlacements,
+    setFurnitureCategories,
     setFurnitureTemplates,
     setWallOpenings,
   ]);
@@ -551,6 +563,7 @@ export default function FlatPlanner() {
       setWallThickness(flat.wallThickness ?? 10);
       setWallThicknesses(flat.wallThicknesses ?? {});
       setWallOpenings(importedWallOpenings);
+      setFurnitureCategories(flat.furnitureCategories ?? []);
       setFurnitureTemplates(flat.furnitureTemplates ?? []);
       setFurniturePlacements(flat.furniturePlacements ?? []);
       resetHistory({
@@ -558,6 +571,7 @@ export default function FlatPlanner() {
         wallThickness: flat.wallThickness ?? 10,
         wallThicknesses: flat.wallThicknesses ?? {},
         wallOpenings: importedWallOpenings,
+        furnitureCategories: flat.furnitureCategories ?? [],
         furnitureTemplates: flat.furnitureTemplates ?? [],
         furniturePlacements: flat.furniturePlacements ?? [],
       });
@@ -588,6 +602,14 @@ export default function FlatPlanner() {
     }
 
     setRooms((current) => current.filter((room) => room.id !== roomId));
+    setFurnitureTemplates((current) =>
+      current.map((template) => ({
+        ...template,
+        roomIds: template.roomIds?.filter(
+          (assignedRoomId) => assignedRoomId !== roomId,
+        ),
+      })),
+    );
     setFurniturePlacements((current) =>
       current.filter((placement) => placement.roomId !== roomId),
     );
@@ -670,6 +692,38 @@ export default function FlatPlanner() {
       setSelectedFurnitureId(null);
       setFurnitureDetailsPosition(null);
     }
+  }
+
+  function addFurnitureCategory(name: string) {
+    const trimmedName = name.trim();
+    if (
+      !trimmedName ||
+      furnitureCategories.some(
+        (category) =>
+          category.name.toLowerCase() === trimmedName.toLowerCase(),
+      )
+    ) {
+      return;
+    }
+
+    setFurnitureCategories((current) => [
+      ...current,
+      { id: createId(), name: trimmedName },
+    ]);
+  }
+
+  function removeFurnitureCategory(categoryId: string) {
+    setFurnitureCategories((current) =>
+      current.filter((category) => category.id !== categoryId),
+    );
+    setFurnitureTemplates((current) =>
+      current.map((template) => ({
+        ...template,
+        categoryIds: template.categoryIds?.filter(
+          (assignedCategoryId) => assignedCategoryId !== categoryId,
+        ),
+      })),
+    );
   }
 
   function toggleFlatLock() {
@@ -964,6 +1018,10 @@ export default function FlatPlanner() {
                       : null
                   }
                   templates={furnitureTemplates}
+                  rooms={rooms}
+                  categories={furnitureCategories}
+                  onCreateCategory={addFurnitureCategory}
+                  onDeleteCategory={removeFurnitureCategory}
                   onBack={() => {
                     setManualFloorPlanScale(null);
                     setManualRoomDesignerScale(null);
@@ -1029,6 +1087,13 @@ export default function FlatPlanner() {
                   saveLabel={editingFurnitureTemplate ? "Save changes" : "Save"}
                   newShapeWidth={editingFurnitureTemplate?.width ?? 100}
                   newShapeLength={editingFurnitureTemplate?.length ?? 60}
+                  templateOrganization={{
+                    rooms,
+                    categories: furnitureCategories,
+                    roomIds: editingFurnitureTemplate?.roomIds ?? [],
+                    categoryIds:
+                      editingFurnitureTemplate?.categoryIds ?? [],
+                  }}
                   initialComponents={
                     editingFurnitureTemplate
                       ? getFurnitureTemplateComponents(editingFurnitureTemplate)
@@ -1046,7 +1111,15 @@ export default function FlatPlanner() {
                   }
                   onBack={cancelFurnitureTemplateEdit}
                   onNameChange={setFurnitureName}
-                  onSave={saveFurnitureTemplate}
+                  onSave={(name, width, length, components, assignments) =>
+                    saveFurnitureTemplate(
+                      name,
+                      width,
+                      length,
+                      components,
+                      assignments,
+                    )
+                  }
                 />
               )}
             </>

@@ -8,11 +8,251 @@
 }
 
 .templatePicker .templateList {
+    margin-top: 4px;
+}
+
+.pickerHeader {
+    justify-content: space-between;
+}
+
+.headerActions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.categoryManagerButton,
+.closeCategoryDialogButton {
+    display: grid;
+    flex: 0 0 32px;
+    width: 32px;
+    height: 32px;
+    place-items: center;
+    border: 1px solid var(--app-border);
+    border-radius: 8px;
+    background: var(--app-surface);
+    color: var(--app-text);
+    cursor: pointer;
+}
+
+.categoryManagerButton:hover,
+.categoryManagerButton:focus-visible,
+.closeCategoryDialogButton:hover,
+.closeCategoryDialogButton:focus-visible {
+    background: var(--app-canvas);
+}
+
+.categoryManagerButton svg {
+    width: 16px;
+    height: 16px;
+    fill: none;
+    stroke: currentColor;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 1.8;
+}
+
+.catalogControls {
+    display: grid;
+    gap: 8px;
     margin-top: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--app-border);
+}
+
+.catalogControls > label {
+    display: grid;
+    gap: 4px;
+    font-size: 13px;
+}
+
+.catalogControls select,
+.categoryForm input,
+.categoryForm button,
+.categoryList button {
+    min-height: 32px;
+    padding: 4px 8px;
+    border: 1px solid var(--app-border);
+    border-radius: 6px;
+    background: var(--app-surface);
+    color: var(--app-text);
+    font: inherit;
+}
+
+.allRoomsToggle {
+    display: flex !important;
+    align-items: center;
+    gap: 8px !important;
+    cursor: pointer;
+}
+
+.allRoomsToggle input {
+    display: grid;
+    flex: 0 0 auto;
+    width: 16px;
+    height: 16px;
+    margin: 0;
+    appearance: none;
+    place-content: center;
+    border: 1px solid var(--palette-teal-medium);
+    border-radius: 3px;
+    background-color: var(--palette-teal-dark);
+    cursor: pointer;
+}
+
+.allRoomsToggle input:hover:not(:checked) {
+    border-color: var(--palette-teal-light);
+    background-color: var(--palette-teal-medium);
+}
+
+.allRoomsToggle input::after {
+    width: 12px;
+    height: 10px;
+    transform: scale(0);
+    background: var(--palette-teal-dark);
+    clip-path: polygon(0 45%, 15% 30%, 38% 54%, 83% 5%, 100% 22%, 41% 95%);
+    content: "";
+}
+
+.allRoomsToggle input:checked {
+    border-color: var(--palette-green-light);
+    background-color: var(--palette-green-light);
+}
+
+.allRoomsToggle input:checked:hover {
+    border-color: var(--palette-green-very-light);
+    background-color: var(--palette-green-very-light);
+}
+
+.allRoomsToggle input:checked::after {
+    transform: scale(1);
+}
+
+.allRoomsToggle input:focus-visible {
+    outline: 2px solid var(--palette-teal-very-light);
+    outline-offset: 3px;
+}
+
+.templateGroup + .templateGroup {
+    margin-top: 12px;
+}
+
+.groupSummary {
+    display: flex;
+    align-items: center;
+    min-height: 28px;
+    cursor: pointer;
+    list-style: none;
+}
+
+.groupSummary::-webkit-details-marker {
+    display: none;
+}
+
+.groupSummary::before {
+    width: 16px;
+    flex: 0 0 16px;
+    content: "▸";
+    color: var(--app-muted);
+}
+
+.templateGroup[open] > .groupSummary::before {
+    content: "▾";
+}
+
+.groupTitle {
+    margin: 0;
+    color: var(--app-muted);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.categoryDialog {
+    position: fixed;
+    inset: 0;
+    width: min(360px, calc(100vw - 32px));
+    max-height: min(70dvh, 480px);
+    margin: auto;
+    padding: 16px;
+    overflow-y: auto;
+    border: 1px solid var(--app-border);
+    border-radius: 10px;
+    background: var(--app-surface);
+    color: var(--app-text);
+    box-shadow: 0 16px 48px rgb(0 0 0 / 35%);
+}
+
+.categoryDialog::backdrop {
+    background: rgb(0 0 0 / 45%);
+}
+
+.categoryDialogHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.categoryDialogHeader h3 {
+    margin: 0;
+    font-size: 16px;
+}
+
+.closeCategoryDialogButton {
+    font-size: 20px;
+    line-height: 1;
+}
+
+.categoryForm {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 6px;
+    margin-top: 16px;
+}
+
+.categoryForm button,
+.categoryList button {
+    cursor: pointer;
+}
+
+.categoryForm button:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.categoryList {
+    display: grid;
+    gap: 6px;
+    margin: 8px 0 0;
+    padding: 0;
+    list-style: none;
+}
+
+.categoryList li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    min-width: 0;
+}
+
+.categoryList span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.categoryList button {
+    flex: 0 0 32px;
+    padding: 0;
+    font-size: 18px;
 }
 
 @media (max-width: 760px) {
     .templatePicker {
         padding: 12px;
+    }
+
+    .categoryDialog {
+        max-height: min(80dvh, 480px);
     }
 }

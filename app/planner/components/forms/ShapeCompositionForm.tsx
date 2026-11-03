@@ -1,4 +1,4 @@
-import { useState, type PointerEvent } from "react";
+import { useEffect, useRef, useState, type PointerEvent } from "react";
 import sharedStyles from "../../FlatPlanner.module.css";
 import styles from "./ShapeCompositionForm.module.css";
 import {
@@ -8,7 +8,12 @@ import {
 import { snapShapePosition, type ShapeBounds } from "../../geometry/shapeSnapping";
 import ShapeCompositionCanvas from "../canvas/ShapeCompositionCanvas";
 import { createId } from "../../utils/createId";
-import type { Pair, RoomComponent } from "../../types";
+import type {
+  FurnitureCategory,
+  Pair,
+  Room,
+  RoomComponent,
+} from "../../types";
 
 export function ShapeCompositionForm({
   name,
@@ -20,6 +25,7 @@ export function ShapeCompositionForm({
   saveLabel,
   newShapeWidth = 400,
   newShapeLength = 300,
+  templateOrganization,
   onBack,
   onNameChange,
   onSave,
@@ -33,6 +39,12 @@ export function ShapeCompositionForm({
   saveLabel?: string;
   newShapeWidth?: number;
   newShapeLength?: number;
+  templateOrganization?: {
+    rooms: Room[];
+    categories: FurnitureCategory[];
+    roomIds: number[];
+    categoryIds: string[];
+  };
   onBack: () => void;
   onNameChange: (value: string) => void;
   onSave: (
@@ -40,6 +52,7 @@ export function ShapeCompositionForm({
     width: number,
     length: number,
     components: RoomComponent[],
+    assignments?: { roomIds: number[]; categoryIds: string[] },
   ) => void;
 }) {
   const [shapeWidth, setShapeWidth] = useState(newShapeWidth);
@@ -58,6 +71,17 @@ export function ShapeCompositionForm({
         },
       ],
   );
+  const [selectedRoomIds, setSelectedRoomIds] = useState(
+    () => templateOrganization?.roomIds ?? [],
+  );
+  const [selectedCategoryIds, setSelectedCategoryIds] = useState(
+    () => templateOrganization?.categoryIds ?? [],
+  );
+  const [openAssignment, setOpenAssignment] = useState<
+    "rooms" | "categories" | null
+  >(null);
+  const roomsAssignmentRef = useRef<HTMLDivElement>(null);
+  const categoriesAssignmentRef = useRef<HTMLDivElement>(null);
   const [selectedComponentId, setSelectedComponentId] = useState<string | null>(
     null,
   );
@@ -84,6 +108,27 @@ export function ShapeCompositionForm({
   const selectedComponent = components.find(
     (component) => component.id === selectedComponentId,
   );
+
+  useEffect(() => {
+    if (!openAssignment) {
+      return;
+    }
+
+    function closeAssignmentOnOutsidePointer(event: globalThis.PointerEvent) {
+      const activeAssignment =
+        openAssignment === "rooms"
+          ? roomsAssignmentRef.current
+          : categoriesAssignmentRef.current;
+
+      if (event.target instanceof Node && !activeAssignment?.contains(event.target)) {
+        setOpenAssignment(null);
+      }
+    }
+
+    document.addEventListener("pointerdown", closeAssignmentOnOutsidePointer);
+    return () =>
+      document.removeEventListener("pointerdown", closeAssignmentOnOutsidePointer);
+  }, [openAssignment]);
 
   function getSvgCoordinates(
     svg: SVGSVGElement,
@@ -350,7 +395,18 @@ export function ShapeCompositionForm({
       y: component.y - minY,
     }));
 
-    onSave(name, width, length, normalizedComponents);
+    onSave(
+      name,
+      width,
+      length,
+      normalizedComponents,
+      templateOrganization
+        ? {
+            roomIds: selectedRoomIds,
+            categoryIds: selectedCategoryIds,
+          }
+        : undefined,
+    );
   }
 
   return (
@@ -396,6 +452,143 @@ export function ShapeCompositionForm({
               onChange={(event) => onNameChange(event.target.value)}
             />
           </label>
+
+          {templateOrganization && (
+            <div className={styles.templateOrganization}>
+              <div
+                ref={roomsAssignmentRef}
+                className={`${styles.assignmentGroup} ${
+                  openAssignment === "rooms" ? styles.assignmentGroupOpen : ""
+                }`}
+              >
+                <span className={styles.assignmentLabel}>Rooms</span>
+                <button
+                  className={styles.assignmentSelect}
+                  type="button"
+                  aria-label="Select rooms"
+                  aria-expanded={openAssignment === "rooms"}
+                  aria-controls="furniture-room-options"
+                  onClick={() =>
+                    setOpenAssignment((current) =>
+                      current === "rooms" ? null : "rooms",
+                    )
+                  }
+                >
+                  <span>
+                    {selectedRoomIds.length > 0
+                      ? selectedRoomIds
+                          .map(
+                            (roomId) =>
+                              templateOrganization.rooms.find(
+                                (room) => room.id === roomId,
+                              )?.name,
+                          )
+                          .filter(Boolean)
+                          .join(", ")
+                      : "All rooms"}
+                  </span>
+                </button>
+                {openAssignment === "rooms" && (
+                  <div
+                    className={styles.assignmentOptions}
+                    id="furniture-room-options"
+                    role="group"
+                    aria-label="Rooms"
+                  >
+                    {templateOrganization.rooms.map((room) => (
+                    <label key={room.id}>
+                      <input
+                        type="checkbox"
+                        checked={selectedRoomIds.includes(room.id)}
+                        onChange={(event) =>
+                          setSelectedRoomIds((current) =>
+                            event.target.checked
+                              ? [...current, room.id]
+                              : current.filter((roomId) => roomId !== room.id),
+                          )
+                        }
+                      />
+                      {room.name}
+                    </label>
+                    ))}
+                    <p className={sharedStyles.helperText}>
+                      No room selection makes this template available everywhere.
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              <div
+                ref={categoriesAssignmentRef}
+                className={`${styles.assignmentGroup} ${
+                  openAssignment === "categories"
+                    ? styles.assignmentGroupOpen
+                    : ""
+                }`}
+              >
+                <span className={styles.assignmentLabel}>Categories</span>
+                <button
+                  className={styles.assignmentSelect}
+                  type="button"
+                  aria-label="Select categories"
+                  aria-expanded={openAssignment === "categories"}
+                  aria-controls="furniture-category-options"
+                  onClick={() =>
+                    setOpenAssignment((current) =>
+                      current === "categories" ? null : "categories",
+                    )
+                  }
+                >
+                  <span>
+                    {selectedCategoryIds.length > 0
+                      ? selectedCategoryIds
+                          .map(
+                            (categoryId) =>
+                              templateOrganization.categories.find(
+                                (category) => category.id === categoryId,
+                              )?.name,
+                          )
+                          .filter(Boolean)
+                          .join(", ")
+                      : "No categories selected"}
+                  </span>
+                </button>
+                {openAssignment === "categories" && (
+                  <div
+                    className={styles.assignmentOptions}
+                    id="furniture-category-options"
+                    role="group"
+                    aria-label="Categories"
+                  >
+                    {templateOrganization.categories.length > 0 ? (
+                      templateOrganization.categories.map((category) => (
+                      <label key={category.id}>
+                        <input
+                          type="checkbox"
+                          checked={selectedCategoryIds.includes(category.id)}
+                          onChange={(event) =>
+                            setSelectedCategoryIds((current) =>
+                              event.target.checked
+                                ? [...current, category.id]
+                                : current.filter(
+                                    (categoryId) => categoryId !== category.id,
+                                  ),
+                            )
+                          }
+                        />
+                        {category.name}
+                      </label>
+                      ))
+                    ) : (
+                      <p className={sharedStyles.helperText}>
+                        Add categories from the furniture catalog.
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           <div className={styles.shapePicker}>
             {(

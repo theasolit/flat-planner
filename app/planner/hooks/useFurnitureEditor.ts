@@ -79,6 +79,10 @@ export function useFurnitureEditor({
     width: number,
     length: number,
     components: RoomComponent[],
+    assignments: { roomIds: number[]; categoryIds: string[] } = {
+      roomIds: [],
+      categoryIds: [],
+    },
   ) {
     const trimmedName = name.trim();
 
@@ -112,6 +116,12 @@ export function useFurnitureEditor({
       width,
       length,
       components,
+      ...(assignments.roomIds.length > 0
+        ? { roomIds: [...new Set(assignments.roomIds)] }
+        : {}),
+      ...(assignments.categoryIds.length > 0
+        ? { categoryIds: [...new Set(assignments.categoryIds)] }
+        : {}),
     };
 
     if (editingTemplateId === null) {

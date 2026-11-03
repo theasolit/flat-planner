@@ -29,6 +29,7 @@ export type Flat = {
   wallThickness?: number;
   wallThicknesses?: Record<string, number>;
   wallOpenings?: WallOpening[];
+  furnitureCategories?: FurnitureCategory[];
   furnitureTemplates?: FurnitureTemplate[];
   furniturePlacements?: FurniturePlacement[];
 };
@@ -101,6 +102,11 @@ export type WallOpening = {
   swingSide?: "left" | "right";
 };
 
+export type FurnitureCategory = {
+  id: string;
+  name: string;
+};
+
 export type RoomDrag = {
   roomId: number;
   pointerId: number;
@@ -124,6 +130,8 @@ export type FurnitureTemplate = {
   width: number;
   length: number;
   components?: RoomComponent[];
+  roomIds?: number[];
+  categoryIds?: string[];
 };
 
 export type FurniturePlacement = {

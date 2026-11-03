@@ -764,6 +764,294 @@ test("editing a furniture template updates its existing placements", async ({
   }
 });
 
+test("furniture catalog groups by room or category and filters room assignments", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page.evaluate(() => localStorage.clear());
+  await page.reload();
+
+  async function createRoom(name: string) {
+    await page.getByRole("button", { name: "Add room" }).click();
+    await page
+      .getByTestId("shape-composition-work-area")
+      .getByLabel("Room name")
+      .fill(name);
+    await page
+      .getByTestId("shape-composition-creator")
+      .getByRole("button", { name: "Save" })
+      .click();
+  }
+
+  await createRoom("Studio");
+  await createRoom("Guest room");
+  await page.getByRole("button", { name: "Studio", exact: true }).click();
+
+  const editCategories = page.getByRole("button", { name: "Edit categories" });
+  const addTemplate = page.getByRole("button", {
+    name: "Create furniture template",
+  });
+  const editButtonBounds = await editCategories.boundingBox();
+  const addButtonBounds = await addTemplate.boundingBox();
+  expect(editButtonBounds).not.toBeNull();
+  expect(addButtonBounds).not.toBeNull();
+  if (!editButtonBounds || !addButtonBounds) {
+    throw new Error("The catalog header actions are not visible.");
+  }
+  expect(editButtonBounds.x).toBeLessThan(addButtonBounds.x);
+  expect(editButtonBounds.x - addButtonBounds.x).toBeLessThan(42);
+
+  await editCategories.click();
+  const categoryDialog = page.getByRole("dialog", {
+    name: "Manage categories",
+  });
+  await expect(categoryDialog).toBeVisible();
+  await expect(categoryDialog).toHaveAttribute("open", "");
+  await page.getByLabel("New category name").fill("Work");
+  await page.getByRole("button", { name: "Add category" }).click();
+  await page.getByLabel("New category name").fill("Storage");
+  await page.getByRole("button", { name: "Add category" }).click();
+  await page.getByRole("button", { name: "Close category manager" }).click();
+  await expect(categoryDialog).not.toBeVisible();
+
+  await page.getByRole("button", { name: "Create furniture template" }).click();
+  await page.getByLabel("Template Name").fill("Desk");
+  const furnitureEditor = page.getByTestId("shape-composition-creator");
+  const roomsAssignment = furnitureEditor.getByRole("button", {
+    name: "Select rooms",
+  });
+  const categoriesAssignment = furnitureEditor.getByRole("button", {
+    name: "Select categories",
+  });
+  await expect(roomsAssignment).toHaveAttribute("aria-expanded", "false");
+  const categoriesBoundsBeforeOpen = await categoriesAssignment.boundingBox();
+  await roomsAssignment.click();
+  await expect(roomsAssignment).toHaveAttribute("aria-expanded", "true");
+  expect(await categoriesAssignment.boundingBox()).toEqual(
+    categoriesBoundsBeforeOpen,
+  );
+  const roomOptions = furnitureEditor.getByRole("group", { name: "Rooms" });
+  const studioCheckbox = roomOptions.getByLabel("Studio", { exact: true });
+  await expect(studioCheckbox).toBeVisible();
+  await expect(studioCheckbox).toHaveCSS("appearance", "none");
+  await expect(studioCheckbox).toHaveCSS("width", "16px");
+  await studioCheckbox.uncheck();
+  await studioCheckbox.hover();
+  await expect(studioCheckbox).toHaveCSS(
+    "background-color",
+    "rgb(77, 110, 115)",
+  );
+  await page.mouse.move(0, 0);
+  await studioCheckbox.check();
+  await page.mouse.move(0, 0);
+  await expect(studioCheckbox).toHaveCSS(
+    "background-color",
+    "rgb(152, 200, 167)",
+  );
+  await studioCheckbox.hover();
+  await expect(studioCheckbox).toHaveCSS(
+    "background-color",
+    "rgb(163, 236, 185)",
+  );
+  await roomOptions.getByLabel("Guest room", { exact: true }).check();
+  await roomsAssignment.click();
+  await expect(roomsAssignment).toHaveAttribute("aria-expanded", "false");
+  await categoriesAssignment.click();
+  await expect(roomsAssignment).toHaveAttribute("aria-expanded", "false");
+  await expect(categoriesAssignment).toHaveAttribute("aria-expanded", "true");
+  const categoryOptions = furnitureEditor.getByRole("group", {
+    name: "Categories",
+  });
+  await expect(
+    categoryOptions.getByLabel("Work", { exact: true }),
+  ).toBeVisible();
+  await categoryOptions.getByLabel("Work", { exact: true }).check();
+  await categoryOptions.getByLabel("Storage", { exact: true }).check();
+  await expect(roomsAssignment).toContainText("Studio, Guest room");
+  await expect(categoriesAssignment).toContainText("Work, Storage");
+  await categoriesAssignment.click();
+  await expect(categoriesAssignment).toHaveAttribute("aria-expanded", "false");
+  await roomsAssignment.click();
+  await furnitureEditor.getByLabel("Template Name").click();
+  await expect(roomsAssignment).toHaveAttribute("aria-expanded", "false");
+  await expect(roomOptions).not.toBeVisible();
+  await page
+    .getByTestId("shape-composition-creator")
+    .getByRole("button", { name: "Save" })
+    .click();
+
+  await page.getByRole("button", { name: "Studio", exact: true }).click();
+  await page.getByRole("button", { name: "Create furniture template" }).click();
+  await page.getByLabel("Template Name").fill("Universal lamp");
+  await page
+    .getByTestId("shape-composition-creator")
+    .getByRole("button", { name: "Save" })
+    .click();
+  await page.getByRole("button", { name: "Studio", exact: true }).click();
+
+  const desk = page.getByRole("button", {
+    name: "Desk — 100 × 60 cm",
+  });
+  const universalLamp = page.getByRole("button", {
+    name: "Universal lamp — 100 × 60 cm",
+  });
+  await expect(
+    page.getByRole("heading", { name: "Studio", exact: true }).first(),
+  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Guest room", exact: true })).toBeVisible();
+  await expect(desk).toHaveCount(2);
+  await expect(universalLamp).toHaveCount(1);
+
+  const allRoomsToggle = page.getByRole("checkbox", {
+    name: "Show furniture from all rooms",
+  });
+  await expect(allRoomsToggle).toHaveCSS("appearance", "none");
+  await expect(allRoomsToggle).toHaveCSS("width", "16px");
+  await allRoomsToggle.uncheck();
+  await page.mouse.move(0, 0);
+  await expect(allRoomsToggle).toHaveCSS(
+    "background-color",
+    "rgb(52, 72, 74)",
+  );
+  await allRoomsToggle.hover();
+  await expect(allRoomsToggle).toHaveCSS(
+    "background-color",
+    "rgb(77, 110, 115)",
+  );
+  await allRoomsToggle.check();
+  const checkmarkStyle = await allRoomsToggle.evaluate((checkbox) => {
+    const style = getComputedStyle(checkbox, "::after");
+    return {
+      width: style.width,
+      height: style.height,
+      borderLeftWidth: style.borderLeftWidth,
+      borderBottomWidth: style.borderBottomWidth,
+    };
+  });
+  expect(checkmarkStyle).toEqual({
+    width: "12px",
+    height: "10px",
+    borderLeftWidth: "0px",
+    borderBottomWidth: "0px",
+  });
+  await page.mouse.move(0, 0);
+  await expect(allRoomsToggle).toHaveCSS(
+    "background-color",
+    "rgb(152, 200, 167)",
+  );
+  await allRoomsToggle.hover();
+  await expect(allRoomsToggle).toHaveCSS(
+    "background-color",
+    "rgb(163, 236, 185)",
+  );
+  await allRoomsToggle.uncheck();
+  await expect(desk).toHaveCount(1);
+  await expect(universalLamp).toHaveCount(1);
+
+  await page.getByLabel("Group furniture by").selectOption("category");
+  await expect(page.getByRole("heading", { name: "Work", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Storage", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Uncategorized", exact: true })).toBeVisible();
+  await expect(desk).toHaveCount(2);
+  await expect(universalLamp).toHaveCount(1);
+
+  const workGroup = page
+    .locator("details")
+    .filter({ has: page.getByRole("heading", { name: "Work", exact: true }) });
+  await workGroup.locator("summary").click();
+  await expect(workGroup).not.toHaveAttribute("open", "");
+  await expect(desk).toHaveCount(1);
+  await workGroup.locator("summary").click();
+  await expect(workGroup).toHaveAttribute("open", "");
+  await expect(desk).toHaveCount(2);
+
+  const uncategorizedGroup = page
+    .locator("details")
+    .filter({
+      has: page.getByRole("heading", { name: "Uncategorized", exact: true }),
+    });
+  await uncategorizedGroup.locator("summary").click();
+  await expect(universalLamp).toHaveCount(0);
+  await uncategorizedGroup.locator("summary").click();
+  await expect(universalLamp).toHaveCount(1);
+
+  await expect
+    .poll(() =>
+      page.evaluate(() => {
+        const data = JSON.parse(
+          localStorage.getItem("flat-planner-v2") ?? "null",
+        );
+        return data?.furnitureCategories?.map(
+          (category: { name: string }) => category.name,
+        );
+      }),
+    )
+    .toEqual(["Work", "Storage"]);
+
+  await expect
+    .poll(() =>
+      page.evaluate(() => {
+        const data = JSON.parse(
+          localStorage.getItem("flat-planner-v2") ?? "null",
+        );
+        const template = data?.furnitureTemplates?.find(
+          (item: { name: string }) => item.name === "Desk",
+        );
+        return (
+          template?.roomIds?.length === 2 &&
+          template?.categoryIds?.length === 2
+        );
+      }),
+    )
+    .toBe(true);
+
+  const savedOrganization = await page.evaluate(() => {
+    const data = JSON.parse(localStorage.getItem("flat-planner-v2") ?? "null");
+    const template = data?.furnitureTemplates?.find(
+      (item: { name: string }) => item.name === "Desk",
+    );
+    return {
+      categories: data?.furnitureCategories?.map(
+        (category: { name: string }) => category.name,
+      ),
+      roomIds: template?.roomIds,
+      categoryIds: template?.categoryIds,
+    };
+  });
+  expect(savedOrganization.categories).toEqual(["Work", "Storage"]);
+  expect(savedOrganization.roomIds).toHaveLength(2);
+  expect(savedOrganization.categoryIds).toHaveLength(2);
+
+  await page.reload();
+  await page.getByRole("button", { name: "Studio", exact: true }).click();
+  await expect(page.getByLabel("Group furniture by")).toHaveValue("category");
+  await expect(
+    page.getByRole("heading", { name: "Work", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("checkbox", { name: "Show furniture from all rooms" }),
+  ).toHaveCount(0);
+
+  await page.getByLabel("Group furniture by").selectOption("room");
+  await expect(
+    page.getByRole("checkbox", { name: "Show furniture from all rooms" }),
+  ).not.toBeChecked();
+  const studioGroup = page
+    .locator("details")
+    .filter({ has: page.getByRole("heading", { name: "Studio", exact: true }) });
+  await studioGroup.locator("summary").click();
+  await expect(studioGroup).not.toHaveAttribute("open", "");
+  await page.reload();
+  await page.getByRole("button", { name: "Studio", exact: true }).click();
+  const reloadedStudioGroup = page
+    .locator("details")
+    .filter({ has: page.getByRole("heading", { name: "Studio", exact: true }) });
+  await expect(page.getByLabel("Group furniture by")).toHaveValue("room");
+  await expect(reloadedStudioGroup).not.toHaveAttribute("open", "");
+  await expect(desk).toHaveCount(0);
+  await expect(universalLamp).toHaveCount(1);
+});
+
 test("furniture hit targets and labels follow the rendered shape", async ({
   page,
 }) => {

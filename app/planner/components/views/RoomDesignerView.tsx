@@ -5,6 +5,7 @@ import { FurnitureTemplatePicker } from "../forms/FurnitureTemplatePicker";
 import RoomDesignerCanvas from "../canvas/RoomDesignerCanvas";
 import type { CanvasNavigation } from "../../hooks/useCanvasNavigation";
 import type {
+  FurnitureCategory,
   FurnitureTemplate,
   Room,
 } from "../../types";
@@ -23,12 +24,16 @@ type Props = {
   onZoomOut: () => void;
   onZoomIn: () => void;
   onFitToView: () => void;
+  rooms: Room[];
+  categories: FurnitureCategory[];
   templates: FurnitureTemplate[];
   onBack: () => void;
   onAddFurniture: ComponentProps<typeof FurnitureTemplatePicker>["onAddFurniture"];
   onCreateTemplate: () => void;
   onEditTemplate: (template: FurnitureTemplate) => void;
   onDeleteTemplate: (template: FurnitureTemplate) => void;
+  onCreateCategory: (name: string) => void;
+  onDeleteCategory: (categoryId: string) => void;
   onCanvasClick: (target: EventTarget | null) => void;
 };
 
@@ -41,12 +46,16 @@ export default function RoomDesignerView({
   onZoomOut,
   onZoomIn,
   onFitToView,
+  rooms,
+  categories,
   templates,
   onBack,
   onAddFurniture,
   onCreateTemplate,
   onEditTemplate,
   onDeleteTemplate,
+  onCreateCategory,
+  onDeleteCategory,
   onCanvasClick,
 }: Props) {
   return (
@@ -98,11 +107,15 @@ export default function RoomDesignerView({
           />
           <FurnitureTemplatePicker
             room={selectedRoom}
+            rooms={rooms}
+            categories={categories}
             templates={templates}
             onAddFurniture={onAddFurniture}
             onCreateTemplate={onCreateTemplate}
             onEditTemplate={onEditTemplate}
             onDeleteTemplate={onDeleteTemplate}
+            onCreateCategory={onCreateCategory}
+            onDeleteCategory={onDeleteCategory}
           />
         </div>
       ) : (

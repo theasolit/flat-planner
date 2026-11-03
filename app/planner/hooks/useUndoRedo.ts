@@ -15,6 +15,7 @@ export type PlannerHistorySnapshot = {
   wallThickness: number;
   wallThicknesses: NonNullable<Flat["wallThicknesses"]>;
   wallOpenings: NonNullable<Flat["wallOpenings"]>;
+  furnitureCategories: NonNullable<Flat["furnitureCategories"]>;
   furnitureTemplates: NonNullable<Flat["furnitureTemplates"]>;
   furniturePlacements: NonNullable<Flat["furniturePlacements"]>;
 };

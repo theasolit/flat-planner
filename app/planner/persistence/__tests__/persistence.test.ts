@@ -47,6 +47,82 @@ describe("flat import validation", () => {
     expect(parseFlatData(JSON.stringify(validFlat))).toEqual(validFlat);
   });
 
+  it("round-trips furniture room and category assignments", () => {
+    const categorizedFlat: Flat = {
+      ...validFlat,
+      furnitureCategories: [{ id: "work", name: "Work" }],
+      furnitureTemplates: [
+        {
+          id: "desk",
+          name: "Desk",
+          shape: "rectangle",
+          width: 120,
+          length: 60,
+          roomIds: [1],
+          categoryIds: ["work"],
+        },
+      ],
+    };
+
+    expect(
+      parseFlatData(serializeFlatData(categorizedFlat)),
+    ).toEqual(categorizedFlat);
+  });
+
+  it("rejects furniture assignments to missing rooms or categories", () => {
+    const template = {
+      id: "desk",
+      name: "Desk",
+      shape: "rectangle",
+      width: 120,
+      length: 60,
+    };
+
+    expect(() =>
+      parseFlatData(
+        JSON.stringify({
+          ...validFlat,
+          furnitureTemplates: [{ ...template, roomIds: [2] }],
+        }),
+      ),
+    ).toThrow("The file does not contain a valid flat planner layout.");
+
+    expect(() =>
+      parseFlatData(
+        JSON.stringify({
+          ...validFlat,
+          furnitureTemplates: [{ ...template, categoryIds: ["missing"] }],
+        }),
+      ),
+    ).toThrow("The file does not contain a valid flat planner layout.");
+  });
+
+  it("rejects duplicate managed furniture categories", () => {
+    expect(() =>
+      parseFlatData(
+        JSON.stringify({
+          ...validFlat,
+          furnitureCategories: [
+            { id: "work", name: "Work" },
+            { id: "work", name: "Office" },
+          ],
+        }),
+      ),
+    ).toThrow("The file does not contain a valid flat planner layout.");
+
+    expect(() =>
+      parseFlatData(
+        JSON.stringify({
+          ...validFlat,
+          furnitureCategories: [
+            { id: "work", name: "Work" },
+            { id: "office", name: " work " },
+          ],
+        }),
+      ),
+    ).toThrow("The file does not contain a valid flat planner layout.");
+  });
+
   it("accepts quarter-circle room components and furniture templates", () => {
     const flat: Flat = {
       ...validFlat,
